@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  torre302:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: torre302:latest
+    ports:
+      - "4006:4006"
+    environment:
+      - NODE_ENV=production
+      - PORT=4006
+    restart: unless-stopped

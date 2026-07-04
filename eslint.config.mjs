@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored Claude Code skill mirrors (already in .gitignore, not our code):
+    ".agents/**",
+    ".agent/**",
+    ".claude/**",
+    "agent/**",
   ]),
 ]);
 

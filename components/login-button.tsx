@@ -1,12 +1,15 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 
 export function LoginButton() {
+  const router = useRouter();
+
   return (
     <motion.button
       type="button"
-      onClick={() => console.log("login clicked")}
+      onClick={() => router.push("/dashboard")}
       whileTap={{ scale: 0.98 }}
       className="rounded-md bg-[var(--color-text)] px-4 py-1.5 text-sm text-[var(--color-bg)]"
     >

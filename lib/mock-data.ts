@@ -4,6 +4,8 @@ export type Cliente = {
   empresa: string;
   contactId: string;
   email: string;
+  usuarioId?: string;
+  userId?: string | null;
 };
 
 export type Suscripcion = {

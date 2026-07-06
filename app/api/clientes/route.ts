@@ -41,6 +41,13 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    const empresa = await prisma.user.findUnique({ where: { id: datos.usuarioId } });
+    if (!empresa || empresa.rol !== "EMPRESA") {
+      return NextResponse.json(
+        { error: "El usuarioId indicado no corresponde a una empresa válida." },
+        { status: 400 },
+      );
+    }
     usuarioId = datos.usuarioId;
   }
 

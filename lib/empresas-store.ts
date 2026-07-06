@@ -29,7 +29,7 @@ export function useEmpresas() {
 
   useEffect(() => {
     fetch("/api/empresas")
-      .then((res) => res.json())
+      .then((res) => (res.ok ? res.json() : []))
       .then((datos: Empresa[]) => setEmpresas(datos))
       .finally(() => setCargando(false));
   }, []);

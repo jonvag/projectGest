@@ -1,0 +1,691 @@
+HANDOFF PARA OTRO AGENTE — proyecto "administradorProyectos" (projectGest)
+============================================================================
+
+Este documento es autocontenido: quien lo reciba no tiene contexto previo de
+la conversación donde se armó. Asumí que sos un agente nuevo, sin memoria de
+nada de esto, trabajando en el mismo repo local.
+
+Repo: /Users/jonvag/Documents/Claude/Projects/administradorProyectos
+Stack: Next.js 16 (App Router, API routes), React 19, Prisma 6 + PostgreSQL,
+bcryptjs, Tailwind v4. Sin test runner (no hay jest/vitest configurado, solo
+`npm run lint` con eslint). Verificación = manual, con `curl` para API y
+Playwright headless para UI (ver "Cómo verificar" más abajo).
+
+Se trabaja DIRECTO sobre la rama `main`, sin branches ni worktrees separados
+(así lo pidió el dueño del proyecto explícitamente). No hay remoto configurado
+(`git remote -v` da vacío), así que no hay riesgo de pisar a nadie más, pero
+igual hay que ser prolijo con los commits (ver advertencia de git más abajo).
+
+----------------------------------------------------------------------------
+ADVERTENCIA CRÍTICA DE GIT — LEER ANTES DE HACER CUALQUIER COMMIT
+----------------------------------------------------------------------------
+
+El working tree de este repo tiene, en este momento, BASTANTE trabajo previo
+sin commitear que NO tiene nada que ver con lo que este documento pide. Son
+cambios de otra feature en desarrollo (login, middleware, landing page, etc.)
+que el dueño del proyecto todavía no commiteó. Ejemplos de archivos que hoy
+aparecen como "modified" o "untracked" en `git status` y que NO hay que tocar
+ni commitear como parte de este trabajo:
+
+  app/api/auth/, app/login/, middleware.ts, lib/api-serializers.ts,
+  lib/auth-constants.ts, lib/prisma.ts, components/dotted-background.tsx,
+  components/hero.tsx, components/login-button.tsx, package.json,
+  package-lock.json, docs/superpowers/plans/2026-07-05-migracion-db.md,
+  docs/superpowers/plans/2026-07-06-auth-login.md, y specs relacionadas.
+
+Durante el desarrollo de la feature anterior (panel de administración de
+empresas) esto ya causó un incidente real dos veces: un `git add -A` (o
+`git add .`) barrió sin querer TODO lo de arriba en un commit que debía
+tener solo 3 archivos. Se corrigió con `git reset --soft` + recommit, pero
+no debería volver a pasar.
+
+Regla dura: **`git add <ruta-exacta> <ruta-exacta> ...`, nunca `git add -A`,
+`git add .` ni `git add --all`.** Antes de cada commit de este trabajo, correr
+`git status --short` y confirmar que lo que aparece en el índice (columna
+izquierda con letra, ej. `A ` o `M `) es EXACTAMENTE la lista de archivos que
+esta tarea dice que hay que tocar — nada más. Si aparece algo de la lista de
+arriba (o cualquier otra cosa no mencionada en la tarea), hacer
+`git restore --staged <archivo>` antes de commitear.
+
+----------------------------------------------------------------------------
+CONTEXTO DEL MODELO DE DATOS ACTUAL (ya implementado, no tocar salvo que se
+indique)
+----------------------------------------------------------------------------
+
+`prisma/schema.prisma` hoy tiene:
+
+```prisma
+enum CicloCobro {
+  mensual
+  trimestral
+  anual
+}
+
+model Cliente {
+  id            String        @id @default(uuid())
+  usuarioId     String
+  usuario       User          @relation("EmpresaClientes", fields: [usuarioId], references: [id], onDelete: Restrict)
+  userId        String?       @unique
+  user          User?         @relation("ClienteLogin", fields: [userId], references: [id], onDelete: SetNull)
+  nombre        String
+  empresa       String
+  contactId     String
+  email         String        @unique
+  creadoEn      DateTime      @default(now())
+  suscripciones Suscripcion[]
+}
+
+model Suscripcion {
+  id           String     @id @default(uuid())
+  clienteId    String
+  cliente      Cliente    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servicio     String
+  monto        Float
+  ciclo        CicloCobro
+  proximoCobro DateTime   @db.Date
+  creadoEn     DateTime   @default(now())
+}
+
+model Pago {
+  id                     String   @id @default(uuid())
+  suscripcionId          String
+  clienteId              String
+  servicio               String
+  monto                  Float
+  fechaPago              DateTime @db.Date
+  fechaCobroAnterior     DateTime @db.Date
+  fechaProximoCobroNueva DateTime @db.Date
+  creadoEn               DateTime @default(now())
+}
+```
+(nota: `Pago` NO tiene relaciones de Prisma declaradas hacia `Cliente` ni
+`Suscripcion` — son solo columnas `String` sueltas, sin `@relation`. Es un
+detalle importante para la Tarea 3 de este documento.)
+
+```prisma
+enum Rol {
+  SUPERUSER
+  EMPRESA
+  CLIENTE
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  nombre           String?
+  passwordHash     String
+  rol              Rol
+  creadoEn         DateTime  @default(now())
+  sessions         Session[]
+  clientes         Cliente[] @relation("EmpresaClientes")
+  clienteVinculado Cliente?  @relation("ClienteLogin")
+}
+
+model Session {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiraEn DateTime
+  creadoEn DateTime @default(now())
+}
+```
+
+Roles: `SUPERUSER` (administra todo, no tiene clientes propios), `EMPRESA`
+(dueña de sus `Cliente`s vía `usuarioId`), `CLIENTE` (login opcional de un
+cliente puntual vía `Cliente.userId` — hoy casi nadie lo usa todavía, es
+reciente).
+
+Cuentas sembradas en `prisma/seed.ts` (dev):
+- SUPERUSER: `jon.apiscope.empresa@gmail.com` / `wqrxOCAco1pP`
+- EMPRESA: `empresa@demo.com` / `DemoEmpresa123!` (nombre "Empresa Demo")
+
+`lib/auth.ts` ya tiene, y hay que reusar (no reescribir):
+
+```ts
+export type SesionActual = { id: string; email: string; rol: Rol };
+export async function requireSesion(): Promise<SesionActual | null> { ... }
+export function filtroClientePorSesion(sesion: SesionActual): Prisma.ClienteWhereInput {
+  if (sesion.rol === "SUPERUSER") return {};
+  if (sesion.rol === "EMPRESA") return { usuarioId: sesion.id };
+  return { userId: sesion.id }; // CLIENTE
+}
+export async function hashPassword(password: string): Promise<string> { ... }
+export async function verifyPassword(password: string, hash: string): Promise<boolean> { ... }
+```
+
+Patrón establecido en TODAS las rutas API existentes (`app/api/clientes/*`,
+`app/api/suscripciones/*`, `app/api/pagos/*`, `app/api/empresas/*`):
+1. `const sesion = await requireSesion(); if (!sesion) return 401.`
+2. Si la ruta es solo para un rol, chequear `sesion.rol` y devolver 403.
+3. Nunca devolver `passwordHash` en una respuesta JSON de `User` — usar
+   `select` explícito de Prisma.
+4. Errores de Prisma: `error.code === "P2002"` → 409 (unique constraint),
+   `"P2003"` → problema de FK.
+
+Patrón establecido en el frontend:
+- Hooks de datos en `lib/*-store.ts` (ej. `lib/clientes-store.ts`,
+  `lib/empresas-store.ts`), todos `"use client"`, devuelven
+  `{ok:true} | {ok:false, error: string}` para escrituras, nunca tiran
+  excepciones.
+- Las páginas (`app/dashboard/**/page.tsx`) adaptan ese resultado a
+  `string | null` antes de pasarlo a un modal (`return resultado.ok ? null :
+  resultado.error;`).
+- Modales en `components/dashboard/*-modal.tsx`, todos con el mismo look:
+  `fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4`,
+  tarjeta `w-full max-w-md rounded-lg border border-[var(--color-border)]
+  bg-[var(--color-surface)] p-6`.
+- Colores disponibles como variables CSS (`app/globals.css`), usar siempre
+  estas, no inventar otras: `--color-bg`, `--color-surface`, `--color-text`,
+  `--color-text-muted`, `--color-border`, `--color-accent-bg/border/text`,
+  `--color-success-bg/border/text`, `--color-danger-bg/border/text`.
+- Sidebar: `components/dashboard/sidebar.tsx`, recibe `rol: Rol` como prop
+  desde `app/dashboard/layout.tsx` (server component), arma `navItems`
+  condicionalmente según rol.
+
+----------------------------------------------------------------------------
+TAREA 1 (chica): distinguir "cargando" de "empresa no encontrada"
+----------------------------------------------------------------------------
+
+Archivo: `app/dashboard/empresas/[id]/page.tsx`
+
+Hoy (línea ~72-78) dice:
+
+```tsx
+  if (cargando || !empresa) {
+    return (
+      <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
+  }
+```
+
+Problema: si `/api/empresas/[id]` devuelve 404 (empresa no existe, o el id
+pertenece a un usuario que no es EMPRESA), `useEmpresaDetalle` deja `empresa`
+en `null` para siempre (esto ya está bien resuelto, no crashea). Pero como la
+condición es `cargando || !empresa`, la página queda mostrando "Cargando..."
+para siempre en vez de decir que no se encontró la empresa.
+
+Cambio pedido: separar los dos casos.
+
+```tsx
+  if (cargando) {
+    return (
+      <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (!empresa) {
+    return (
+      <div className="flex flex-col gap-4 px-6 py-8 sm:px-10">
+        <p className="text-[var(--color-text)]">Empresa no encontrada.</p>
+        <Link href="/dashboard/empresas" className="text-sm text-[var(--color-text-muted)] underline">
+          ← Volver a Empresas
+        </Link>
+      </div>
+    );
+  }
+```
+
+Hay que agregar el import de `Link` de `next/link` arriba del archivo (hoy
+no está importado ahí — sí lo usan otras páginas del proyecto, ej.
+`app/dashboard/clientes/[id]/page.tsx`, mismo patrón de "volver").
+
+Cómo verificar:
+1. `npx tsc --noEmit && npm run lint` — debe quedar limpio.
+2. Con `npm run dev` corriendo, loguearse como SUPERUSER
+   (`jon.apiscope.empresa@gmail.com` / `wqrxOCAco1pP`), ir a
+   `/dashboard/empresas`, entrar a una empresa real → debe verse igual que
+   antes (nombre, tabla de clientes).
+3. Ir a `/dashboard/empresas/00000000-0000-0000-0000-000000000000` (un uuid
+   inventado) → debe verse "Empresa no encontrada." con el link, NO quedarse
+   colgado en "Cargando...".
+
+Commit (archivos exactos, ver advertencia de git arriba):
+```
+git add app/dashboard/empresas/\[id\]/page.tsx
+git commit -m "fix: mostrar 'empresa no encontrada' en vez de loading infinito"
+```
+
+----------------------------------------------------------------------------
+TAREA 2 (opcional, PEDIR CONFIRMACIÓN antes de correrla): limpiar datos de
+prueba acumulados en la base de dev
+----------------------------------------------------------------------------
+
+Durante el desarrollo de la feature anterior se crearon, vía pruebas
+manuales/curl, varios usuarios y clientes de prueba en la base de datos de
+desarrollo (emails como `otra-empresa-test@demo.com`, `pw-test-...@demo.com`,
+`acceso-test@demo.com`, etc.), y se le dio acceso de login (CLIENTE) a varios
+de los 6 clientes sembrados originalmente. Esto no es un bug de código, es
+solo que la base de dev quedó "sucia" respecto de lo que un seed limpio
+produciría.
+
+Esta tarea es OPCIONAL y DESTRUCTIVA (borra datos reales de la base de dev
+actual, incluyendo cualquier prueba manual que el dueño del proyecto haya
+hecho después de esta sesión). NO la ejecutes sin preguntar primero. Si te
+autorizan, la forma de dejarla limpia es:
+
+```bash
+npx prisma migrate reset --force
+```
+
+Esto reaplica todas las migraciones desde cero y vuelve a correr
+`prisma/seed.ts`, dejando exactamente: el SUPERUSER, la empresa demo, sus 6
+clientes originales (sin acceso CLIENTE en ninguno), 8 suscripciones, 0 pagos.
+
+----------------------------------------------------------------------------
+TAREA 3 (feature grande): Notificaciones — log de envíos de WhatsApp vía n8n
+----------------------------------------------------------------------------
+
+CONTEXTO DE NEGOCIO: fuera de esta app corre un cron en n8n que, todos los
+días, revisa qué suscripciones están por vencer y le manda un recordatorio
+por WhatsApp al cliente. Hoy esa app (projectGest) no tiene ninguna
+visibilidad de esos envíos — no sabe si salieron, si fallaron, ni a quién.
+Esta feature agrega esa visibilidad: una tabla en la base que registra cada
+intento de envío (éxito o falla), un endpoint para que n8n reporte el
+resultado después de cada intento, y una pantalla en el dashboard para verlo
+(el link "Notificaciones" ya existe en el sidebar — `components/dashboard/
+sidebar.tsx` línea con `available: false` — hoy apunta a un placeholder
+"Próximamente" en `app/dashboard/notificaciones/page.tsx` vía el componente
+`components/dashboard/coming-soon.tsx`).
+
+Diseño explícitamente decidido (no hace falta re-discutirlo con nadie, ya
+está resuelto):
+
+- La tabla `Notificacion` NO tiene su propia columna `usuarioId` — el dueño
+  (empresa) se resuelve transitivamente vía `Notificacion.cliente.usuarioId`,
+  igual que ya hace `Suscripcion` (evita duplicar el dueño en cada tabla).
+- El endpoint que llama n8n necesita su propia autenticación — NO es una
+  sesión de browser, así que no puede usar `requireSesion()`. Se usa un
+  secreto compartido en un header HTTP, comparado contra una variable de
+  entorno.
+- El endpoint para n8n NUNCA debe confiar en un `clienteId`/`usuarioId` que
+  venga en el body — solo recibe `suscripcionId` + `estado` (+ opcional
+  `detalle`), y el servidor resuelve `clienteId` buscando la `Suscripcion`
+  en la base. Esto evita que alguien con el secreto pueda falsificar de qué
+  cliente es la notificación.
+
+### 3.1 — Schema y migración
+
+Modificar `prisma/schema.prisma`:
+
+```prisma
+model Suscripcion {
+  id            String         @id @default(uuid())
+  clienteId     String
+  cliente       Cliente        @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servicio      String
+  monto         Float
+  ciclo         CicloCobro
+  proximoCobro  DateTime       @db.Date
+  creadoEn      DateTime       @default(now())
+  notificaciones Notificacion[]
+}
+
+model Cliente {
+  id            String         @id @default(uuid())
+  usuarioId     String
+  usuario       User           @relation("EmpresaClientes", fields: [usuarioId], references: [id], onDelete: Restrict)
+  userId        String?        @unique
+  user          User?          @relation("ClienteLogin", fields: [userId], references: [id], onDelete: SetNull)
+  nombre        String
+  empresa       String
+  contactId     String
+  email         String         @unique
+  creadoEn      DateTime       @default(now())
+  suscripciones Suscripcion[]
+  notificaciones Notificacion[]
+}
+
+model Notificacion {
+  id            String      @id @default(uuid())
+  suscripcionId String
+  suscripcion   Suscripcion @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+  clienteId     String
+  cliente       Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  canal         String      @default("whatsapp")
+  estado        String
+  detalle       String?
+  enviadoEn     DateTime    @default(now())
+}
+```
+
+(Nota: solo se agregan los campos `notificaciones Notificacion[]` a los
+modelos `Suscripcion` y `Cliente` que ya existen — no reescribas esos
+modelos enteros, solo agregales esa línea. El resto de cada modelo queda
+igual a como está hoy.)
+
+`onDelete: Cascade` en ambas relaciones de `Notificacion` (a diferencia de
+`Restrict` que usa `Suscripcion.clienteId`): un registro de notificación es
+un log histórico dependiente, no debería bloquear el borrado de la
+suscripción o el cliente al que pertenece.
+
+`estado` es `String` libre (no enum) para no tener que migrar el schema si
+n8n empieza a mandar un estado nuevo en el futuro — los valores esperados
+hoy son `"enviado"` y `"fallido"`, documentados en el endpoint pero no
+forzados a nivel de base.
+
+Migrar:
+```bash
+npx prisma migrate dev --name notificaciones
+```
+Esto es una migración aditiva (tabla nueva + columnas nullable/con default
+en las relaciones inversas no rompe nada existente) — NO hace falta
+`migrate reset`. Si hay datos ya sembrados (va a haberlos), esto debería
+aplicar limpio sin pedir confirmación de pérdida de datos. Si por algún
+motivo pide confirmar un reset, PARÁ y preguntá antes de aceptarlo — no está
+previsto que haga falta.
+
+Verificar con `npx prisma migrate status` → debe decir "Database schema is
+up to date!".
+
+Commit:
+```
+git add prisma/schema.prisma prisma/migrations
+git commit -m "feat: agregar tabla Notificacion (log de envios de WhatsApp via n8n)"
+```
+
+### 3.2 — Variable de entorno del secreto compartido
+
+Agregar al archivo `.env` (que ya existe en la raíz del repo, con
+`DATABASE_URL` — NO commitear `.env`, ya está en `.gitignore`):
+
+```
+N8N_WEBHOOK_SECRET=<generar un string aleatorio largo, ej. con `openssl rand -hex 32`>
+```
+
+Este valor hay que comunicárselo al dueño del proyecto para que lo configure
+del lado de n8n (header `x-n8n-secret` en el nodo HTTP Request del workflow).
+No hace falta un archivo `.env.example` nuevo si no existe ya ese patrón en
+el proyecto — chequear primero si existe `.env.example`; si existe, agregar
+`N8N_WEBHOOK_SECRET=` ahí también (sin valor real).
+
+### 3.3 — Endpoint para que n8n reporte el resultado
+
+Crear `app/api/notificaciones/webhook/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(request: Request) {
+  const secreto = request.headers.get("x-n8n-secret");
+  if (!secreto || secreto !== process.env.N8N_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
+  const datos = await request.json();
+  if (!datos.suscripcionId || !datos.estado) {
+    return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+  }
+  if (datos.estado !== "enviado" && datos.estado !== "fallido") {
+    return NextResponse.json({ error: "estado debe ser 'enviado' o 'fallido'." }, { status: 400 });
+  }
+
+  const suscripcion = await prisma.suscripcion.findUnique({
+    where: { id: datos.suscripcionId },
+  });
+  if (!suscripcion) {
+    return NextResponse.json({ error: "La suscripción indicada no existe." }, { status: 404 });
+  }
+
+  const notificacion = await prisma.notificacion.create({
+    data: {
+      suscripcionId: suscripcion.id,
+      clienteId: suscripcion.clienteId,
+      canal: datos.canal || "whatsapp",
+      estado: datos.estado,
+      detalle: datos.detalle || null,
+    },
+  });
+  return NextResponse.json(notificacion, { status: 201 });
+}
+```
+
+Notar que `clienteId` se resuelve de `suscripcion.clienteId` (ya buscado en
+la base), nunca del body de la request — así ningún llamador puede
+falsificar de qué cliente es la notificación aunque tenga el secreto.
+
+Cómo verificar (con `npm run dev` corriendo, sin sesión de browser — este
+endpoint no usa cookies):
+```bash
+# Sin secreto -> 401
+curl -X POST http://localhost:3000/api/notificaciones/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"suscripcionId":"x","estado":"enviado"}'
+
+# Con secreto incorrecto -> 401
+curl -X POST http://localhost:3000/api/notificaciones/webhook \
+  -H "Content-Type: application/json" -H "x-n8n-secret: incorrecto" \
+  -d '{"suscripcionId":"x","estado":"enviado"}'
+
+# Con secreto correcto pero suscripcionId inventado -> 404
+curl -X POST http://localhost:3000/api/notificaciones/webhook \
+  -H "Content-Type: application/json" -H "x-n8n-secret: <el valor real de N8N_WEBHOOK_SECRET>" \
+  -d '{"suscripcionId":"00000000-0000-0000-0000-000000000000","estado":"enviado"}'
+
+# Con secreto correcto y un suscripcionId real (sacalo de GET /api/suscripciones
+# logueado como empresa@demo.com) -> 201
+```
+Para conseguir un `suscripcionId` real: loguearse como `empresa@demo.com` /
+`DemoEmpresa123!` vía `POST /api/auth/login` (guardando cookies con `-c`),
+después `curl -b <cookies> http://localhost:3000/api/suscripciones` y tomar
+el `id` de cualquier elemento del array.
+
+Commit:
+```
+git add app/api/notificaciones/webhook
+git commit -m "feat: endpoint webhook para que n8n reporte envios de WhatsApp"
+```
+
+### 3.4 — Endpoint de lectura para el dashboard
+
+Crear `app/api/notificaciones/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+import { filtroClientePorSesion, requireSesion } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+  const sesion = await requireSesion();
+  if (!sesion) {
+    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  }
+
+  const notificaciones = await prisma.notificacion.findMany({
+    where: { cliente: filtroClientePorSesion(sesion) },
+    include: {
+      cliente: { select: { nombre: true } },
+      suscripcion: { select: { servicio: true } },
+    },
+    orderBy: { enviadoEn: "desc" },
+  });
+  return NextResponse.json(notificaciones);
+}
+```
+
+Esto SÍ usa sesión de browser normal (a diferencia del webhook) — cualquier
+rol autenticado puede leer, filtrado por `filtroClientePorSesion` igual que
+`/api/suscripciones` (que ya usa este mismo patrón de filtro anidado vía
+`cliente`, porque `Notificacion` tiene relación real a `Cliente` — a
+diferencia de `Pago`, que NO la tiene y necesita el enfoque de lista de ids;
+`Notificacion` no tiene ese problema).
+
+Cómo verificar:
+```bash
+curl -b /tmp/empresa.txt http://localhost:3000/api/notificaciones
+```
+Expected: `200`, array (vacío si todavía no se creó ninguna notificación de
+prueba, o con las que creaste en el paso 3.3).
+
+Commit:
+```
+git add app/api/notificaciones/route.ts
+git commit -m "feat: GET /api/notificaciones filtrado por rol de sesion"
+```
+(Ojo: NO uses `git add app/api/notificaciones` a secas en este paso si ya
+commiteaste el webhook en el paso anterior en un commit separado — commitealo
+igual, no pasa nada si el directorio ya tiene el subdirectorio `webhook`
+commiteado antes; `git add app/api/notificaciones/route.ts` es una ruta de
+archivo exacta y está bien.)
+
+### 3.5 — Hook de datos y pantalla del dashboard
+
+Crear `lib/notificaciones-store.ts`:
+
+```ts
+"use client";
+
+import { useEffect, useState } from "react";
+
+export type Notificacion = {
+  id: string;
+  suscripcionId: string;
+  clienteId: string;
+  canal: string;
+  estado: string;
+  detalle: string | null;
+  enviadoEn: string;
+  cliente: { nombre: string };
+  suscripcion: { servicio: string };
+};
+
+export function useNotificaciones() {
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/notificaciones")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((datos: Notificacion[]) => setNotificaciones(datos))
+      .finally(() => setCargando(false));
+  }, []);
+
+  return { notificaciones, cargando };
+}
+```
+
+(Nota el `res.ok ? res.json() : []` desde el arranque — en la feature
+anterior hubo DOS bugs de crash por olvidarse de este chequeo en hooks
+nuevos, no lo repitas acá.)
+
+Reemplazar el contenido de `app/dashboard/notificaciones/page.tsx` (hoy solo
+tiene el placeholder `ComingSoon`):
+
+```tsx
+"use client";
+
+import { useNotificaciones } from "@/lib/notificaciones-store";
+
+function formatFecha(iso: string): string {
+  const fecha = new Date(iso);
+  return fecha.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
+}
+
+export default function NotificacionesPage() {
+  const { notificaciones, cargando } = useNotificaciones();
+
+  if (cargando) {
+    return (
+      <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
+      <h1 className="text-xl font-medium text-[var(--color-text)]">Notificaciones</h1>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+              <th className="py-2 pr-4 font-medium">Cliente</th>
+              <th className="py-2 pr-4 font-medium">Servicio</th>
+              <th className="py-2 pr-4 font-medium">Canal</th>
+              <th className="py-2 pr-4 font-medium">Estado</th>
+              <th className="py-2 pr-4 font-medium">Fecha</th>
+              <th className="py-2 pr-4 font-medium">Detalle</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--color-border)]">
+            {notificaciones.map((n) => (
+              <tr key={n.id}>
+                <td className="py-3 pr-4 text-[var(--color-text)]">{n.cliente.nombre}</td>
+                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{n.suscripcion.servicio}</td>
+                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{n.canal}</td>
+                <td className="py-3 pr-4">
+                  <span
+                    className={
+                      n.estado === "enviado"
+                        ? "text-[var(--color-success-text)]"
+                        : "text-[var(--color-danger-text)]"
+                    }
+                  >
+                    {n.estado === "enviado" ? "Enviado" : "Falló"}
+                  </span>
+                </td>
+                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{formatFecha(n.enviadoEn)}</td>
+                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{n.detalle ?? "—"}</td>
+              </tr>
+            ))}
+            {notificaciones.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-6 text-center text-[var(--color-text-muted)]">
+                  Todavía no hay notificaciones registradas.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+```
+
+Habilitar el link en el sidebar: en `components/dashboard/sidebar.tsx`,
+cambiar en `NAV_ITEMS_BASE`:
+```tsx
+  { href: "/dashboard/notificaciones", label: "Notificaciones", available: false },
+```
+por:
+```tsx
+  { href: "/dashboard/notificaciones", label: "Notificaciones", available: true },
+```
+(una sola palabra cambia, `false` → `true` — no toques nada más de ese
+archivo, ya tiene otros cambios de la feature anterior que no son parte de
+esta tarea).
+
+Cómo verificar (typecheck/lint + Playwright, mismo patrón que se usó en la
+feature anterior):
+1. `npx tsc --noEmit && npm run lint` limpio.
+2. Levantar `npm run dev`, loguearse como `empresa@demo.com` /
+   `DemoEmpresa123!`, ir a `/dashboard/notificaciones` desde el sidebar (el
+   link ya no debe verse gris/deshabilitado) → debe verse la tabla (vacía o
+   con lo que se haya creado en el paso 3.3 vía curl).
+3. Crear una notificación de prueba con el curl del paso 3.3 (secreto +
+   suscripcionId real), refrescar la página → debe aparecer la fila con el
+   nombre del cliente, servicio, canal, estado en verde ("Enviado"), fecha y
+   detalle.
+4. Repetir con `"estado":"fallido","detalle":"número de WhatsApp inválido"`
+   → debe aparecer en rojo ("Falló") con el detalle visible.
+
+Commit (archivos exactos):
+```
+git add lib/notificaciones-store.ts app/dashboard/notificaciones/page.tsx components/dashboard/sidebar.tsx
+git commit -m "feat: pantalla de notificaciones (log de envios de WhatsApp)"
+```
+
+----------------------------------------------------------------------------
+FUERA DE ALCANCE (no lo hagas salvo que te lo pidan explícitamente)
+----------------------------------------------------------------------------
+- Filtro/búsqueda en la tabla de notificaciones (por cliente, por estado,
+  por rango de fechas) — se puede agregar después si hace falta.
+- Reintentar un envío fallido desde la UI.
+- Cualquier cambio al workflow de n8n en sí (fuera de este repo).
+- Paginación de la tabla (hoy ninguna otra tabla del dashboard la tiene).

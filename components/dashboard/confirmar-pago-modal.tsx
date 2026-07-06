@@ -9,7 +9,7 @@ type ConfirmarPagoModalProps = {
   suscripcion: Suscripcion | null;
   cliente: Cliente | null;
   onClose: () => void;
-  onConfirmar: (fechaProximoCobro: string) => void;
+  onConfirmar: (fechaProximoCobro: string) => Promise<string | null>;
 };
 
 // El padre le pasa una `key` que cambia cada vez que el modal se abre
@@ -26,15 +26,21 @@ export function ConfirmarPagoModal({
     suscripcion ? calcularProximaFecha(suscripcion.proximoCobro, suscripcion.ciclo) : "",
   );
   const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
   if (!open || !suscripcion) return null;
 
-  function handleConfirmar() {
+  async function handleConfirmar() {
     if (!fecha) {
       setError("La fecha es obligatoria.");
       return;
     }
-    onConfirmar(fecha);
+    setGuardando(true);
+    const errorDelServidor = await onConfirmar(fecha);
+    setGuardando(false);
+    if (errorDelServidor) {
+      setError(errorDelServidor);
+    }
   }
 
   return (
@@ -72,10 +78,11 @@ export function ConfirmarPagoModal({
           <button
             type="button"
             onClick={handleConfirmar}
-            className="rounded-md px-4 py-1.5 text-sm"
+            disabled={guardando}
+            className="rounded-md px-4 py-1.5 text-sm disabled:opacity-50"
             style={{ backgroundColor: "var(--color-success-text)", color: "var(--color-bg)" }}
           >
-            Confirmar
+            {guardando ? "Guardando..." : "Confirmar"}
           </button>
         </div>
       </div>

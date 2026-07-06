@@ -9,7 +9,7 @@ export function LoginButton() {
   return (
     <motion.button
       type="button"
-      onClick={() => router.push("/dashboard")}
+      onClick={() => router.push("/login")}
       whileTap={{ scale: 0.98 }}
       className="rounded-md bg-[var(--color-text)] px-4 py-1.5 text-sm text-[var(--color-bg)]"
     >

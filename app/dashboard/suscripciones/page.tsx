@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ConfirmarPagoModal } from "@/components/dashboard/confirmar-pago-modal";
+import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import { SuscripcionFormModal } from "@/components/dashboard/suscripcion-form-modal";
 import { SuscripcionesTable } from "@/components/dashboard/suscripciones-table";
 import { useClientes } from "@/lib/clientes-store";
@@ -10,13 +11,21 @@ import { usePagos } from "@/lib/pagos-store";
 import { useSuscripciones, type NuevaSuscripcion } from "@/lib/suscripciones-store";
 
 export default function SuscripcionesPage() {
-  const { clientes } = useClientes();
-  const { suscripciones, addSuscripcion, updateSuscripcion, deleteSuscripcion } = useSuscripciones();
+  const { clientes, cargando: cargandoClientes } = useClientes();
+  const {
+    suscripciones,
+    cargando: cargandoSuscripciones,
+    addSuscripcion,
+    updateSuscripcion,
+    deleteSuscripcion,
+  } = useSuscripciones();
   const { addPago } = usePagos();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [suscripcionAEditar, setSuscripcionAEditar] = useState<Suscripcion | null>(null);
   const [modalPagoAbierto, setModalPagoAbierto] = useState(false);
   const [suscripcionAPagar, setSuscripcionAPagar] = useState<Suscripcion | null>(null);
+  const [suscripcionABorrar, setSuscripcionABorrar] = useState<Suscripcion | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   function abrirNueva() {
     setSuscripcionAEditar(null);
@@ -43,9 +52,42 @@ export default function SuscripcionesPage() {
     setSuscripcionAPagar(null);
   }
 
-  function confirmarPago(fechaProximoCobro: string) {
-    if (!suscripcionAPagar) return;
-    addPago({
+  async function guardar(datos: NuevaSuscripcion): Promise<string | null> {
+    const resultado = suscripcionAEditar
+      ? await updateSuscripcion(suscripcionAEditar.id, datos)
+      : await addSuscripcion(datos);
+    return resultado.ok ? null : resultado.error;
+  }
+
+  function pedirBorrar(suscripcion: Suscripcion) {
+    setSuscripcionABorrar(suscripcion);
+  }
+
+  function cancelarBorrar() {
+    setSuscripcionABorrar(null);
+  }
+
+  async function confirmarBorrar() {
+    if (!suscripcionABorrar) return;
+    setBorrando(true);
+    await deleteSuscripcion(suscripcionABorrar.id);
+    setBorrando(false);
+    setSuscripcionABorrar(null);
+  }
+
+  async function confirmarPago(fechaProximoCobro: string): Promise<string | null> {
+    if (!suscripcionAPagar) return null;
+    const resultado = await updateSuscripcion(suscripcionAPagar.id, {
+      clienteId: suscripcionAPagar.clienteId,
+      servicio: suscripcionAPagar.servicio,
+      monto: suscripcionAPagar.monto,
+      ciclo: suscripcionAPagar.ciclo,
+      proximoCobro: fechaProximoCobro,
+    });
+    if (!resultado.ok) {
+      return resultado.error;
+    }
+    await addPago({
       suscripcionId: suscripcionAPagar.id,
       clienteId: suscripcionAPagar.clienteId,
       servicio: suscripcionAPagar.servicio,
@@ -54,35 +96,16 @@ export default function SuscripcionesPage() {
       fechaCobroAnterior: suscripcionAPagar.proximoCobro,
       fechaProximoCobroNueva: fechaProximoCobro,
     });
-    updateSuscripcion(suscripcionAPagar.id, {
-      clienteId: suscripcionAPagar.clienteId,
-      servicio: suscripcionAPagar.servicio,
-      monto: suscripcionAPagar.monto,
-      ciclo: suscripcionAPagar.ciclo,
-      proximoCobro: fechaProximoCobro,
-    });
     cerrarConfirmarPago();
+    return null;
   }
 
-  function guardar(datos: NuevaSuscripcion) {
-    if (suscripcionAEditar) {
-      updateSuscripcion(suscripcionAEditar.id, datos);
-    } else {
-      addSuscripcion(datos);
-    }
-  }
-
-  function borrar(suscripcion: Suscripcion) {
-    const nombreCliente =
-      clientes.find((c) => c.id === suscripcion.clienteId)?.nombre ?? "este cliente";
-    if (
-      !window.confirm(
-        `¿Borrar la suscripción "${suscripcion.servicio}" de ${nombreCliente}? Esta acción no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
-    deleteSuscripcion(suscripcion.id);
+  if (cargandoClientes || cargandoSuscripciones) {
+    return (
+      <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
   }
 
   return (
@@ -102,7 +125,7 @@ export default function SuscripcionesPage() {
         suscripciones={suscripciones}
         clientes={clientes}
         onEditar={abrirEditar}
-        onBorrar={borrar}
+        onBorrar={pedirBorrar}
         onMarcarPagado={abrirConfirmarPago}
       />
 
@@ -122,6 +145,17 @@ export default function SuscripcionesPage() {
         cliente={clientes.find((c) => c.id === suscripcionAPagar?.clienteId) ?? null}
         onClose={cerrarConfirmarPago}
         onConfirmar={confirmarPago}
+      />
+
+      <ConfirmModal
+        open={suscripcionABorrar !== null}
+        titulo="Borrar suscripción"
+        mensaje={`¿Borrar la suscripción "${suscripcionABorrar?.servicio ?? ""}" de ${
+          clientes.find((c) => c.id === suscripcionABorrar?.clienteId)?.nombre ?? "este cliente"
+        }? Esta acción no se puede deshacer.`}
+        confirmando={borrando}
+        onCancelar={cancelarBorrar}
+        onConfirmar={confirmarBorrar}
       />
     </div>
   );

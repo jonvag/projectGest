@@ -3,16 +3,20 @@
 import { useState } from "react";
 import { ClienteFormModal } from "@/components/dashboard/cliente-form-modal";
 import { ClientesTable } from "@/components/dashboard/clientes-table";
+import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import { useClientes, type NuevoCliente } from "@/lib/clientes-store";
 import type { Cliente } from "@/lib/mock-data";
 import { useSuscripciones } from "@/lib/suscripciones-store";
 
 export default function ClientesPage() {
-  const { clientes, addCliente, updateCliente, deleteCliente, isEmailTaken } = useClientes();
-  const { suscripciones } = useSuscripciones();
+  const { clientes, cargando: cargandoClientes, addCliente, updateCliente, deleteCliente, isEmailTaken } =
+    useClientes();
+  const { suscripciones, cargando: cargandoSuscripciones } = useSuscripciones();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
   const [avisoBorrado, setAvisoBorrado] = useState<string | null>(null);
+  const [clienteABorrar, setClienteABorrar] = useState<Cliente | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   function abrirNuevo() {
     setClienteAEditar(null);
@@ -29,19 +33,17 @@ export default function ClientesPage() {
     setClienteAEditar(null);
   }
 
-  function guardar(datos: NuevoCliente): string | null {
+  async function guardar(datos: NuevoCliente): Promise<string | null> {
     if (isEmailTaken(datos.email, clienteAEditar?.id)) {
       return "Ya existe un cliente con ese email.";
     }
-    if (clienteAEditar) {
-      updateCliente(clienteAEditar.id, datos);
-    } else {
-      addCliente(datos);
-    }
-    return null;
+    const resultado = clienteAEditar
+      ? await updateCliente(clienteAEditar.id, datos)
+      : await addCliente(datos);
+    return resultado.ok ? null : resultado.error;
   }
 
-  function borrar(cliente: Cliente) {
+  function pedirBorrar(cliente: Cliente) {
     setAvisoBorrado(null);
     const asociadas = suscripciones.filter((s) => s.clienteId === cliente.id).length;
     if (asociadas > 0) {
@@ -50,15 +52,32 @@ export default function ClientesPage() {
       );
       return;
     }
-    if (!window.confirm(`¿Borrar a ${cliente.nombre}? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-    const resultado = deleteCliente(cliente.id, suscripciones);
+    setClienteABorrar(cliente);
+  }
+
+  function cancelarBorrar() {
+    setClienteABorrar(null);
+  }
+
+  async function confirmarBorrar() {
+    if (!clienteABorrar) return;
+    setBorrando(true);
+    const resultado = await deleteCliente(clienteABorrar.id);
+    setBorrando(false);
+    setClienteABorrar(null);
     if (!resultado.ok) {
       setAvisoBorrado(
-        `${cliente.nombre} tiene ${resultado.suscripcionesAsociadas} suscripción(es) asociada(s). No se puede borrar.`,
+        `${clienteABorrar.nombre} tiene ${resultado.suscripcionesAsociadas} suscripción(es) asociada(s). No se puede borrar.`,
       );
     }
+  }
+
+  if (cargandoClientes || cargandoSuscripciones) {
+    return (
+      <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
   }
 
   return (
@@ -84,7 +103,7 @@ export default function ClientesPage() {
         clientes={clientes}
         suscripciones={suscripciones}
         onEditar={abrirEditar}
-        onBorrar={borrar}
+        onBorrar={pedirBorrar}
       />
 
       <ClienteFormModal
@@ -93,6 +112,15 @@ export default function ClientesPage() {
         clienteAEditar={clienteAEditar}
         onClose={cerrarModal}
         onSave={guardar}
+      />
+
+      <ConfirmModal
+        open={clienteABorrar !== null}
+        titulo="Borrar cliente"
+        mensaje={`¿Borrar a ${clienteABorrar?.nombre ?? ""}? Esta acción no se puede deshacer.`}
+        confirmando={borrando}
+        onCancelar={cancelarBorrar}
+        onConfirmar={confirmarBorrar}
       />
     </div>
   );

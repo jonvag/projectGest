@@ -25,9 +25,17 @@ function formatFecha(iso: string): string {
 
 export default function ClienteDetallePage() {
   const params = useParams<{ id: string }>();
-  const { clientes } = useClientes();
-  const { suscripciones } = useSuscripciones();
-  const { pagos } = usePagos();
+  const { clientes, cargando: cargandoClientes } = useClientes();
+  const { suscripciones, cargando: cargandoSuscripciones } = useSuscripciones();
+  const { pagos, cargando: cargandoPagos } = usePagos();
+
+  if (cargandoClientes || cargandoSuscripciones || cargandoPagos) {
+    return (
+      <div className="flex flex-col gap-4 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
+  }
 
   const cliente = clientes.find((c) => c.id === params.id);
 

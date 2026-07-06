@@ -20,11 +20,19 @@ function formatFecha(iso: string): string {
 }
 
 export default function DashboardPage() {
-  const { clientes } = useClientes();
-  const { suscripciones } = useSuscripciones();
+  const { clientes, cargando: cargandoClientes } = useClientes();
+  const { suscripciones, cargando: cargandoSuscripciones } = useSuscripciones();
 
   function nombreClienteDe(suscripcion: Suscripcion): string {
     return clientes.find((c) => c.id === suscripcion.clienteId)?.nombre ?? "Cliente desconocido";
+  }
+
+  if (cargandoClientes || cargandoSuscripciones) {
+    return (
+      <div className="flex flex-col gap-8 px-6 py-8 sm:px-10">
+        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
   }
 
   const ingresosDelMes = getIngresosEsperadosDelMes(suscripciones);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 
 export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
@@ -25,9 +26,9 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label="Cambiar tema"
-      className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-text)] transition-transform active:scale-95"
+      className="rounded-md border border-[var(--color-border)] p-1.5 text-[var(--color-text)] transition-transform active:scale-95"
     >
-      {isDark ? "Oscuro" : "Claro"}
+      {isDark ? <MoonIcon /> : <SunIcon />}
     </button>
   );
 }

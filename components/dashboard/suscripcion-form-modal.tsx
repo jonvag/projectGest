@@ -9,7 +9,7 @@ type SuscripcionFormModalProps = {
   suscripcionAEditar: Suscripcion | null;
   clientes: Cliente[];
   onClose: () => void;
-  onSave: (datos: NuevaSuscripcion) => void;
+  onSave: (datos: NuevaSuscripcion) => Promise<string | null>;
 };
 
 const FORM_VACIO: NuevaSuscripcion = {
@@ -44,6 +44,8 @@ export function SuscripcionFormModal({
 }: SuscripcionFormModalProps) {
   const [form, setForm] = useState<NuevaSuscripcion>(() => datosIniciales(suscripcionAEditar));
   const [errores, setErrores] = useState<Partial<Record<keyof NuevaSuscripcion, string>>>({});
+  const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
   if (!open) return null;
 
@@ -56,14 +58,20 @@ export function SuscripcionFormModal({
     return nuevosErrores;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const nuevosErrores = validar();
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
       return;
     }
-    onSave(form);
+    setGuardando(true);
+    const error = await onSave(form);
+    setGuardando(false);
+    if (error) {
+      setErrorGeneral(error);
+      return;
+    }
     onClose();
   }
 
@@ -162,6 +170,8 @@ export function SuscripcionFormModal({
             )}
           </div>
 
+          {errorGeneral && <p className="text-sm text-[var(--color-danger-text)]">{errorGeneral}</p>}
+
           <div className="mt-2 flex justify-end gap-3">
             <button
               type="button"
@@ -172,9 +182,10 @@ export function SuscripcionFormModal({
             </button>
             <button
               type="submit"
-              className="rounded-md bg-[var(--color-text)] px-4 py-1.5 text-sm text-[var(--color-bg)]"
+              disabled={guardando}
+              className="rounded-md bg-[var(--color-text)] px-4 py-1.5 text-sm text-[var(--color-bg)] disabled:opacity-50"
             >
-              Guardar
+              {guardando ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </form>

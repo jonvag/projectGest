@@ -8,7 +8,7 @@ type ClienteFormModalProps = {
   open: boolean;
   clienteAEditar: Cliente | null;
   onClose: () => void;
-  onSave: (datos: NuevoCliente) => string | null;
+  onSave: (datos: NuevoCliente) => Promise<string | null>;
 };
 
 const FORM_VACIO: NuevoCliente = { nombre: "", empresa: "", contactId: "", email: "" };
@@ -26,10 +26,11 @@ function datosIniciales(clienteAEditar: Cliente | null): NuevoCliente {
 
 // El padre le pasa una `key` que cambia cada vez que el modal se abre
 // (ver app/dashboard/clientes/page.tsx), así React remonta el componente
-// en vez de tener que sincronizar el formulario con un efecto.
+// en vez de sincronizar el formulario con un efecto.
 export function ClienteFormModal({ open, clienteAEditar, onClose, onSave }: ClienteFormModalProps) {
   const [form, setForm] = useState<NuevoCliente>(() => datosIniciales(clienteAEditar));
   const [errores, setErrores] = useState<Partial<Record<keyof NuevoCliente, string>>>({});
+  const [guardando, setGuardando] = useState(false);
 
   if (!open) return null;
 
@@ -46,14 +47,16 @@ export function ClienteFormModal({ open, clienteAEditar, onClose, onSave }: Clie
     return nuevosErrores;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const nuevosErrores = validar();
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
       return;
     }
-    const errorDeGuardado = onSave(form);
+    setGuardando(true);
+    const errorDeGuardado = await onSave(form);
+    setGuardando(false);
     if (errorDeGuardado) {
       setErrores({ email: errorDeGuardado });
       return;
@@ -136,9 +139,10 @@ export function ClienteFormModal({ open, clienteAEditar, onClose, onSave }: Clie
             </button>
             <button
               type="submit"
-              className="rounded-md bg-[var(--color-text)] px-4 py-1.5 text-sm text-[var(--color-bg)]"
+              disabled={guardando}
+              className="rounded-md bg-[var(--color-text)] px-4 py-1.5 text-sm text-[var(--color-bg)] disabled:opacity-50"
             >
-              Guardar
+              {guardando ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </form>

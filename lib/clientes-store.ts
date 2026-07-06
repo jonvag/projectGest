@@ -1,44 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { clientes as clientesIniciales, type Cliente, type Suscripcion } from "@/lib/mock-data";
-
-const STORAGE_KEY = "projectgest:clientes";
-
-function leerDeLocalStorage(): Cliente[] | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as Cliente[];
-  } catch {
-    return null;
-  }
-}
-
-function guardarEnLocalStorage(clientes: Cliente[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clientes));
-  } catch {
-    // localStorage no disponible (ej. modo privado); los cambios quedan solo en memoria.
-  }
-}
+import type { Cliente } from "@/lib/mock-data";
 
 export type NuevoCliente = Omit<Cliente, "id">;
 
+type ResultadoGuardado = { ok: true } | { ok: false; error: string };
+
+async function leerError(response: Response, fallback: string): Promise<string> {
+  try {
+    const cuerpo = await response.json();
+    return typeof cuerpo.error === "string" ? cuerpo.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function useClientes() {
-  const [clientes, setClientes] = useState<Cliente[]>(clientesIniciales);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    // Igual que en ThemeToggle: no se puede leer localStorage durante el
-    // render (mismatch de hidratación), así que el estado inicial es el
-    // mock y recién acá, post-hidratación, se sincroniza con lo guardado.
-    const guardados = leerDeLocalStorage();
-    if (guardados) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setClientes(guardados);
-    } else {
-      guardarEnLocalStorage(clientesIniciales);
-    }
+    fetch("/api/clientes")
+      .then((res) => res.json())
+      .then((datos: Cliente[]) => setClientes(datos))
+      .finally(() => setCargando(false));
   }, []);
 
   const isEmailTaken = useCallback(
@@ -51,42 +37,49 @@ export function useClientes() {
     [clientes],
   );
 
-  const addCliente = useCallback((nuevo: NuevoCliente): Cliente => {
-    const cliente: Cliente = { ...nuevo, id: crypto.randomUUID() };
-    setClientes((prev) => {
-      const actualizados = [...prev, cliente];
-      guardarEnLocalStorage(actualizados);
-      return actualizados;
+  const addCliente = useCallback(async (nuevo: NuevoCliente): Promise<ResultadoGuardado> => {
+    const response = await fetch("/api/clientes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nuevo),
     });
-    return cliente;
+    if (!response.ok) {
+      return { ok: false, error: await leerError(response, "No se pudo guardar el cliente.") };
+    }
+    const cliente: Cliente = await response.json();
+    setClientes((prev) => [...prev, cliente]);
+    return { ok: true };
   }, []);
 
-  const updateCliente = useCallback((id: string, cambios: NuevoCliente): void => {
-    setClientes((prev) => {
-      const actualizados = prev.map((c) => (c.id === id ? { ...c, ...cambios } : c));
-      guardarEnLocalStorage(actualizados);
-      return actualizados;
-    });
-  }, []);
-
-  const deleteCliente = useCallback(
-    (
-      id: string,
-      suscripcionesActuales: Suscripcion[],
-    ): { ok: true } | { ok: false; suscripcionesAsociadas: number } => {
-      const asociadas = suscripcionesActuales.filter((s) => s.clienteId === id).length;
-      if (asociadas > 0) {
-        return { ok: false, suscripcionesAsociadas: asociadas };
-      }
-      setClientes((prev) => {
-        const actualizados = prev.filter((c) => c.id !== id);
-        guardarEnLocalStorage(actualizados);
-        return actualizados;
+  const updateCliente = useCallback(
+    async (id: string, cambios: NuevoCliente): Promise<ResultadoGuardado> => {
+      const response = await fetch(`/api/clientes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cambios),
       });
+      if (!response.ok) {
+        return { ok: false, error: await leerError(response, "No se pudo guardar el cliente.") };
+      }
+      const cliente: Cliente = await response.json();
+      setClientes((prev) => prev.map((c) => (c.id === id ? cliente : c)));
       return { ok: true };
     },
     [],
   );
 
-  return { clientes, addCliente, updateCliente, deleteCliente, isEmailTaken };
+  const deleteCliente = useCallback(
+    async (id: string): Promise<{ ok: true } | { ok: false; suscripcionesAsociadas: number }> => {
+      const response = await fetch(`/api/clientes/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const cuerpo = await response.json().catch(() => ({ suscripcionesAsociadas: 0 }));
+        return { ok: false, suscripcionesAsociadas: cuerpo.suscripcionesAsociadas ?? 0 };
+      }
+      setClientes((prev) => prev.filter((c) => c.id !== id));
+      return { ok: true };
+    },
+    [],
+  );
+
+  return { clientes, cargando, addCliente, updateCliente, deleteCliente, isEmailTaken };
 }

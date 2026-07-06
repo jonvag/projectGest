@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #fbfbfa;
+  --color-bg: #f5faeb;
   --color-surface: #ffffff;
   --color-border: #eaeaea;
   --color-text: #111111;
@@ -12,6 +12,12 @@
   --color-success-bg: #edf3ec;
   --color-success-border: #cfe0cc;
   --color-success-text: #346538;
+  /* Acento nuevo (powder-petal) — definido solo para modo claro por ahora,
+     a pedido explícito. Si se usa en un componente visible en modo oscuro,
+     hay que agregarle su contraparte en el bloque .dark de abajo. */
+  --color-accent-bg: #ffefe5;
+  --color-accent-border: #ffbe99;
+  --color-accent-text: #993800;
 }
 
 .dark {

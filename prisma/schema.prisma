@@ -59,6 +59,7 @@ enum Rol {
 model User {
   id               String    @id @default(uuid())
   email            String    @unique
+  nombre           String?
   passwordHash     String
   rol              Rol
   creadoEn         DateTime  @default(now())

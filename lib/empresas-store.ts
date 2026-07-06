@@ -66,14 +66,15 @@ export function useEmpresaDetalle(id: string) {
   const [cargando, setCargando] = useState(true);
 
   const recargar = useCallback(async () => {
-    const datos: EmpresaDetalle = await fetch(`/api/empresas/${id}`).then((res) => res.json());
+    const response = await fetch(`/api/empresas/${id}`);
+    const datos: EmpresaDetalle | null = response.ok ? await response.json() : null;
     setEmpresa(datos);
   }, [id]);
 
   useEffect(() => {
     fetch(`/api/empresas/${id}`)
-      .then((res) => res.json())
-      .then((datos: EmpresaDetalle) => setEmpresa(datos))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((datos: EmpresaDetalle | null) => setEmpresa(datos))
       .finally(() => setCargando(false));
   }, [id]);
 

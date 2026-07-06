@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import { filtroClientePorSesion, requireSesion } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const sesion = await requireSesion();
+  if (!sesion) {
+    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const cliente = await prisma.cliente.findFirst({
+    where: { id, ...filtroClientePorSesion(sesion) },
+  });
+  if (!cliente) {
+    return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 });
+  }
+
+  return NextResponse.json(cliente);
+}
+
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await requireSesion();
   if (!sesion) {

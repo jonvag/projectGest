@@ -28,6 +28,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
+  if (sesion.rol === "CLIENTE") {
+    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+  }
+
   const datos = await request.json();
 
   if (
@@ -47,6 +51,16 @@ export async function POST(request: Request) {
   });
   if (!clientePermitido) {
     return NextResponse.json({ error: "El cliente seleccionado no existe." }, { status: 400 });
+  }
+
+  const suscripcionValida = await prisma.suscripcion.findFirst({
+    where: { id: datos.suscripcionId, clienteId: datos.clienteId },
+  });
+  if (!suscripcionValida) {
+    return NextResponse.json(
+      { error: "La suscripción indicada no corresponde a ese cliente." },
+      { status: 400 },
+    );
   }
 
   const pago = await prisma.pago.create({

@@ -22,6 +22,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
+  if (sesion.rol === "CLIENTE") {
+    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+  }
+
   const datos = await request.json();
 
   if (

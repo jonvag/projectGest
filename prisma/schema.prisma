@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CicloCobro {
+  mensual
+  trimestral
+  anual
+}
+
+model Cliente {
+  id            String        @id @default(uuid())
+  usuarioId     String
+  usuario       User          @relation("EmpresaClientes", fields: [usuarioId], references: [id], onDelete: Restrict)
+  userId        String?       @unique
+  user          User?         @relation("ClienteLogin", fields: [userId], references: [id], onDelete: SetNull)
+  nombre        String
+  empresa       String
+  contactId     String
+  email         String        @unique
+  creadoEn      DateTime      @default(now())
+  suscripciones Suscripcion[]
+}
+
+model Suscripcion {
+  id           String     @id @default(uuid())
+  clienteId    String
+  cliente      Cliente    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servicio     String
+  monto        Float
+  ciclo        CicloCobro
+  proximoCobro DateTime   @db.Date
+  creadoEn     DateTime   @default(now())
+}
+
+model Pago {
+  id                     String   @id @default(uuid())
+  suscripcionId          String
+  clienteId              String
+  servicio               String
+  monto                  Float
+  fechaPago              DateTime @db.Date
+  fechaCobroAnterior     DateTime @db.Date
+  fechaProximoCobroNueva DateTime @db.Date
+  creadoEn               DateTime @default(now())
+}
+
+enum Rol {
+  SUPERUSER
+  EMPRESA
+  CLIENTE
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  rol              Rol
+  creadoEn         DateTime  @default(now())
+  sessions         Session[]
+  clientes         Cliente[] @relation("EmpresaClientes")
+  clienteVinculado Cliente?  @relation("ClienteLogin")
+}
+
+model Session {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiraEn DateTime
+  creadoEn DateTime @default(now())
+}

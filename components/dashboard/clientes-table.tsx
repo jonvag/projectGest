@@ -3,16 +3,19 @@
 import { Pencil2Icon, TrashIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { useState } from "react";
+import type { Empresa } from "@/lib/empresas-store";
 import type { Cliente, Suscripcion } from "@/lib/mock-data";
 
 type ClientesTableProps = {
   clientes: Cliente[];
   suscripciones: Suscripcion[];
+  /** Solo se pasa cuando quien mira es SUPERUSER: agrega la columna "Empresa dueña". */
+  empresas?: Empresa[];
   onEditar: (cliente: Cliente) => void;
   onBorrar: (cliente: Cliente) => void;
 };
 
-export function ClientesTable({ clientes, suscripciones, onEditar, onBorrar }: ClientesTableProps) {
+export function ClientesTable({ clientes, suscripciones, empresas, onEditar, onBorrar }: ClientesTableProps) {
   const [busqueda, setBusqueda] = useState("");
 
   const filtrados = clientes.filter((c) => {
@@ -23,6 +26,11 @@ export function ClientesTable({ clientes, suscripciones, onEditar, onBorrar }: C
 
   function contarSuscripciones(clienteId: string): number {
     return suscripciones.filter((s) => s.clienteId === clienteId).length;
+  }
+
+  function nombreEmpresaDueña(usuarioId: string | undefined): string {
+    const empresa = empresas?.find((e) => e.id === usuarioId);
+    return empresa ? (empresa.nombre ?? empresa.email) : "—";
   }
 
   return (
@@ -41,6 +49,7 @@ export function ClientesTable({ clientes, suscripciones, onEditar, onBorrar }: C
             <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
               <th className="py-2 pr-4 font-medium">Nombre</th>
               <th className="py-2 pr-4 font-medium">Empresa</th>
+              {empresas && <th className="py-2 pr-4 font-medium">Empresa dueña</th>}
               <th className="py-2 pr-4 font-medium">ContactId</th>
               <th className="py-2 pr-4 font-medium">Email</th>
               <th className="py-2 pr-4 font-medium">Suscripciones</th>
@@ -56,6 +65,11 @@ export function ClientesTable({ clientes, suscripciones, onEditar, onBorrar }: C
                   </Link>
                 </td>
                 <td className="py-3 pr-4 text-[var(--color-text-muted)]">{c.empresa}</td>
+                {empresas && (
+                  <td className="py-3 pr-4 text-[var(--color-text-muted)]">
+                    {nombreEmpresaDueña(c.usuarioId)}
+                  </td>
+                )}
                 <td className="py-3 pr-4 text-[var(--color-text-muted)]">{c.contactId}</td>
                 <td className="py-3 pr-4 text-[var(--color-text-muted)]">{c.email}</td>
                 <td className="py-3 pr-4 text-[var(--color-text)]">{contarSuscripciones(c.id)}</td>
@@ -85,7 +99,7 @@ export function ClientesTable({ clientes, suscripciones, onEditar, onBorrar }: C
             ))}
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-[var(--color-text-muted)]">
+                <td colSpan={empresas ? 7 : 6} className="py-6 text-center text-[var(--color-text-muted)]">
                   No se encontraron clientes.
                 </td>
               </tr>

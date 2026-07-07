@@ -14,28 +14,42 @@ enum CicloCobro {
 }
 
 model Cliente {
-  id            String        @id @default(uuid())
-  usuarioId     String
-  usuario       User          @relation("EmpresaClientes", fields: [usuarioId], references: [id], onDelete: Restrict)
-  userId        String?       @unique
-  user          User?         @relation("ClienteLogin", fields: [userId], references: [id], onDelete: SetNull)
-  nombre        String
-  empresa       String
-  contactId     String
-  email         String        @unique
-  creadoEn      DateTime      @default(now())
-  suscripciones Suscripcion[]
+  id             String         @id @default(uuid())
+  usuarioId      String
+  usuario        User           @relation("EmpresaClientes", fields: [usuarioId], references: [id], onDelete: Restrict)
+  userId         String?        @unique
+  user           User?          @relation("ClienteLogin", fields: [userId], references: [id], onDelete: SetNull)
+  nombre         String
+  empresa        String
+  contactId      String
+  email          String         @unique
+  creadoEn       DateTime       @default(now())
+  suscripciones  Suscripcion[]
+  notificaciones Notificacion[]
 }
 
 model Suscripcion {
-  id           String     @id @default(uuid())
-  clienteId    String
-  cliente      Cliente    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  servicio     String
-  monto        Float
-  ciclo        CicloCobro
-  proximoCobro DateTime   @db.Date
-  creadoEn     DateTime   @default(now())
+  id             String         @id @default(uuid())
+  clienteId      String
+  cliente        Cliente        @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servicio       String
+  monto          Float
+  ciclo          CicloCobro
+  proximoCobro   DateTime       @db.Date
+  creadoEn       DateTime       @default(now())
+  notificaciones Notificacion[]
+}
+
+model Notificacion {
+  id            String      @id @default(uuid())
+  suscripcionId String
+  suscripcion   Suscripcion @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+  clienteId     String
+  cliente       Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  canal         String      @default("whatsapp")
+  estado        String
+  detalle       String?
+  enviadoEn     DateTime    @default(now())
 }
 
 model Pago {

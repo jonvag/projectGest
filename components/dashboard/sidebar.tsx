@@ -8,7 +8,7 @@ const NAV_ITEMS_BASE = [
   { href: "/dashboard", label: "Dashboard", available: true },
   { href: "/dashboard/clientes", label: "Clientes", available: true },
   { href: "/dashboard/suscripciones", label: "Suscripciones", available: true },
-  { href: "/dashboard/notificaciones", label: "Notificaciones", available: false },
+  { href: "/dashboard/notificaciones", label: "Notificaciones", available: true },
 ];
 
 export function Sidebar({ rol }: { rol: Rol }) {

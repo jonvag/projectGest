@@ -3,15 +3,18 @@
 import { useState } from "react";
 import type { Cliente } from "@/lib/mock-data";
 import type { NuevoCliente } from "@/lib/clientes-store";
+import type { Empresa } from "@/lib/empresas-store";
 
 type ClienteFormModalProps = {
   open: boolean;
   clienteAEditar: Cliente | null;
   onClose: () => void;
   onSave: (datos: NuevoCliente) => Promise<string | null>;
+  /** Solo se pasa cuando quien edita es SUPERUSER: habilita el selector de empresa dueña. */
+  empresas?: Empresa[];
 };
 
-const FORM_VACIO: NuevoCliente = { nombre: "", empresa: "", contactId: "", email: "" };
+const FORM_VACIO: NuevoCliente = { nombre: "", empresa: "", contactId: "", email: "", usuarioId: "" };
 
 function datosIniciales(clienteAEditar: Cliente | null): NuevoCliente {
   return clienteAEditar
@@ -20,6 +23,7 @@ function datosIniciales(clienteAEditar: Cliente | null): NuevoCliente {
         empresa: clienteAEditar.empresa,
         contactId: clienteAEditar.contactId,
         email: clienteAEditar.email,
+        usuarioId: clienteAEditar.usuarioId ?? "",
       }
     : FORM_VACIO;
 }
@@ -27,7 +31,7 @@ function datosIniciales(clienteAEditar: Cliente | null): NuevoCliente {
 // El padre le pasa una `key` que cambia cada vez que el modal se abre
 // (ver app/dashboard/clientes/page.tsx), así React remonta el componente
 // en vez de sincronizar el formulario con un efecto.
-export function ClienteFormModal({ open, clienteAEditar, onClose, onSave }: ClienteFormModalProps) {
+export function ClienteFormModal({ open, clienteAEditar, onClose, onSave, empresas }: ClienteFormModalProps) {
   const [form, setForm] = useState<NuevoCliente>(() => datosIniciales(clienteAEditar));
   const [errores, setErrores] = useState<Partial<Record<keyof NuevoCliente, string>>>({});
   const [guardando, setGuardando] = useState(false);
@@ -43,6 +47,9 @@ export function ClienteFormModal({ open, clienteAEditar, onClose, onSave }: Clie
       nuevosErrores.email = "El email es obligatorio.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       nuevosErrores.email = "El email no tiene un formato válido.";
+    }
+    if (empresas && !form.usuarioId?.trim()) {
+      nuevosErrores.usuarioId = "Elegí a qué empresa pertenece este cliente.";
     }
     return nuevosErrores;
   }
@@ -128,6 +135,30 @@ export function ClienteFormModal({ open, clienteAEditar, onClose, onSave }: Clie
             />
             {errores.email && <p className="text-sm text-[var(--color-danger-text)]">{errores.email}</p>}
           </div>
+
+          {empresas && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-[var(--color-text-muted)]" htmlFor="usuarioId">
+                Empresa dueña
+              </label>
+              <select
+                id="usuarioId"
+                value={form.usuarioId ?? ""}
+                onChange={(e) => setForm({ ...form, usuarioId: e.target.value })}
+                className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+              >
+                <option value="">Seleccionar empresa...</option>
+                {empresas.map((empresa) => (
+                  <option key={empresa.id} value={empresa.id}>
+                    {empresa.nombre ?? empresa.email}
+                  </option>
+                ))}
+              </select>
+              {errores.usuarioId && (
+                <p className="text-sm text-[var(--color-danger-text)]">{errores.usuarioId}</p>
+              )}
+            </div>
+          )}
 
           <div className="mt-2 flex justify-end gap-3">
             <button

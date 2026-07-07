@@ -41,6 +41,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
   }
 
+  let usuarioId: string | undefined;
+  if (sesion.rol === "SUPERUSER" && datos.usuarioId) {
+    const empresa = await prisma.user.findUnique({ where: { id: datos.usuarioId } });
+    if (!empresa || empresa.rol !== "EMPRESA") {
+      return NextResponse.json(
+        { error: "El usuarioId indicado no corresponde a una empresa válida." },
+        { status: 400 },
+      );
+    }
+    usuarioId = datos.usuarioId;
+  }
+
   try {
     const cliente = await prisma.cliente.update({
       where: { id },
@@ -49,6 +61,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         empresa: datos.empresa,
         contactId: datos.contactId,
         email: datos.email,
+        ...(usuarioId ? { usuarioId } : {}),
       },
     });
     return NextResponse.json(cliente);

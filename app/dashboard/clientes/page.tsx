@@ -5,13 +5,18 @@ import { ClienteFormModal } from "@/components/dashboard/cliente-form-modal";
 import { ClientesTable } from "@/components/dashboard/clientes-table";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import { useClientes, type NuevoCliente } from "@/lib/clientes-store";
+import { useEmpresas } from "@/lib/empresas-store";
 import type { Cliente } from "@/lib/mock-data";
+import { useSesion } from "@/lib/sesion-store";
 import { useSuscripciones } from "@/lib/suscripciones-store";
 
 export default function ClientesPage() {
   const { clientes, cargando: cargandoClientes, addCliente, updateCliente, deleteCliente, isEmailTaken } =
     useClientes();
   const { suscripciones, cargando: cargandoSuscripciones } = useSuscripciones();
+  const { sesion } = useSesion();
+  const esSuperuser = sesion?.rol === "SUPERUSER";
+  const { empresas } = useEmpresas();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
   const [avisoBorrado, setAvisoBorrado] = useState<string | null>(null);
@@ -102,6 +107,7 @@ export default function ClientesPage() {
       <ClientesTable
         clientes={clientes}
         suscripciones={suscripciones}
+        empresas={esSuperuser ? empresas : undefined}
         onEditar={abrirEditar}
         onBorrar={pedirBorrar}
       />
@@ -112,6 +118,7 @@ export default function ClientesPage() {
         clienteAEditar={clienteAEditar}
         onClose={cerrarModal}
         onSave={guardar}
+        empresas={esSuperuser ? empresas : undefined}
       />
 
       <ConfirmModal

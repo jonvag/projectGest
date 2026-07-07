@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ClienteFormModal } from "@/components/dashboard/cliente-form-modal";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
@@ -76,10 +77,21 @@ export default function EmpresaDetallePage() {
     return resultado.error;
   }
 
-  if (cargando || !empresa) {
+  if (cargando) {
     return (
       <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
         <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (!empresa) {
+    return (
+      <div className="flex flex-col gap-4 px-6 py-8 sm:px-10">
+        <p className="text-[var(--color-text)]">Empresa no encontrada.</p>
+        <Link href="/dashboard/empresas" className="text-sm text-[var(--color-text-muted)] underline">
+          ← Volver a Empresas
+        </Link>
       </div>
     );
   }

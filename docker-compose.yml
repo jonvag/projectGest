@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile
     image: torre302:latest
     ports:
-      - "4006:4006"
+      - "4008:4008"
     environment:
       - NODE_ENV=production
-      - PORT=4006
+      - PORT=4008
     restart: unless-stopped

@@ -76,7 +76,38 @@ Se despliega en **Dokploy** a partir de este mismo repo (`Dockerfile` + `docker-
    docker compose up --build -d
    ```
 
-   Expone el puerto `4006` (`PORT`/`EXPOSE` en `Dockerfile` y `docker-compose.yml`).
+   Expone el puerto `4008` (`PORT`/`EXPOSE` en `Dockerfile` y `docker-compose.yml`).
+
+### Migrar cuando la base de datos no es alcanzable directamente
+
+Si `DATABASE_URL` de producción no es alcanzable desde tu máquina (firewall, red interna, etc.) pero sí tenés acceso SSH al servidor donde vive, el paso 2 de arriba (`prisma migrate deploy`) se hace así:
+
+1. Copiar al servidor solo lo necesario para migrar (no hace falta el repo entero: `prisma/`, `scripts/`, y los `package.json`/`package-lock.json` para poder instalar `prisma`/`tsx`):
+
+   ```bash
+   scp -r prisma scripts package.json package-lock.json usuario@servidor:/tmp/projectgest-migrate/
+   ```
+
+2. Conectarse por SSH y, si el servidor no tiene Node instalado (o tiene una versión vieja vía `apt`), usar un contenedor Node efímero — la mayoría de estos servidores ya tienen Docker corriendo:
+
+   ```bash
+   ssh usuario@servidor
+   cd /tmp/projectgest-migrate
+
+   docker run --rm -v /tmp/projectgest-migrate:/app -w /app node:20-alpine sh -c "
+     npm install &&
+     DATABASE_URL='<url de producción>' npx prisma migrate deploy &&
+     DATABASE_URL='<url de producción>' npx tsx scripts/seed-prod-minimal.ts
+   "
+   ```
+
+   `scripts/seed-prod-minimal.ts` es un seed mínimo separado del `prisma/seed.ts` de desarrollo (que trae 6 clientes de ejemplo) — crea solo lo esencial para probar producción: el `SUPERUSER`, una empresa, un cliente asociado a esa empresa con su acceso de login, y una suscripción de prueba. Es idempotente (usa `upsert`), se puede volver a correr sin duplicar nada.
+
+3. Limpiar el temporal:
+
+   ```bash
+   rm -rf /tmp/projectgest-migrate
+   ```
 
 **Notas sobre el estado actual de estos archivos** (heredadas del scaffold inicial, revisar antes del primer deploy real):
 - El `Dockerfile` usa `node:22-alpine`, mientras que el desarrollo local es con Node 20.20.2 — no rompe nada (cada stage instala su propio Node), pero vale la pena alinear versiones en algún momento.

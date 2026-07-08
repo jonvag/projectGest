@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { parseFechaDb, serializePago } from "@/lib/api-serializers";
 import { filtroClientePorSesion, requireSesion } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
-  const where: { clienteId?: { in: string[] } } = {};
+  const where: Prisma.PagoWhereInput = {};
   if (sesion.rol !== "SUPERUSER") {
     const clientesPermitidos = await prisma.cliente.findMany({
       where: filtroClientePorSesion(sesion),

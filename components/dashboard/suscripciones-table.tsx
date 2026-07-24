@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircledIcon, Pencil2Icon, TrashIcon } from "@radix-ui/react-icons";
+import { CheckCircledIcon, CheckIcon, Link2Icon, Pencil2Icon, TrashIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { toISODate, type Cliente, type Suscripcion } from "@/lib/mock-data";
 
@@ -10,6 +10,7 @@ type SuscripcionesTableProps = {
   onEditar: (suscripcion: Suscripcion) => void;
   onBorrar: (suscripcion: Suscripcion) => void;
   onMarcarPagado: (suscripcion: Suscripcion) => void;
+  onCopiarLink: (id: string) => Promise<{ ok: true; url: string } | { ok: false; error: string }>;
 };
 
 function formatMonto(monto: number): string {
@@ -33,12 +34,22 @@ export function SuscripcionesTable({
   onEditar,
   onBorrar,
   onMarcarPagado,
+  onCopiarLink,
 }: SuscripcionesTableProps) {
   const [busqueda, setBusqueda] = useState("");
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const hoyISO = toISODate(new Date());
 
   function nombreClienteDe(clienteId: string): string {
     return clientes.find((c) => c.id === clienteId)?.nombre ?? "Cliente desconocido";
+  }
+
+  async function copiarLink(suscripcion: Suscripcion) {
+    const resultado = await onCopiarLink(suscripcion.id);
+    if (!resultado.ok) return;
+    await navigator.clipboard.writeText(resultado.url);
+    setCopiadoId(suscripcion.id);
+    setTimeout(() => setCopiadoId((actual) => (actual === suscripcion.id ? null : actual)), 1500);
   }
 
   const filtradas = suscripciones.filter((s) => {
@@ -100,6 +111,22 @@ export function SuscripcionesTable({
                         className="rounded-md p-1.5 text-[var(--color-success-text)] transition-colors hover:bg-[var(--color-success-bg)]"
                       >
                         <CheckCircledIcon />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copiarLink(s)}
+                        aria-label={`Copiar link de pago: ${nombreClienteDe(s.clienteId)}`}
+                        title="Copiar link de pago"
+                        className="flex items-center gap-1 rounded-md p-1.5 text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface)]"
+                      >
+                        {copiadoId === s.id ? (
+                          <>
+                            <CheckIcon />
+                            <span className="text-xs">¡Copiado!</span>
+                          </>
+                        ) : (
+                          <Link2Icon />
+                        )}
                       </button>
                       <button
                         type="button"

@@ -79,5 +79,14 @@ export function useSuscripciones() {
     setSuscripciones((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  return { suscripciones, cargando, addSuscripcion, updateSuscripcion, deleteSuscripcion };
+  const generarLink = useCallback(async (id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> => {
+    const response = await fetch(`/api/suscripciones/${id}/link`);
+    if (!response.ok) {
+      return { ok: false, error: await leerError(response, "No se pudo generar el link.") };
+    }
+    const { token }: { token: string } = await response.json();
+    return { ok: true, url: `${window.location.origin}/reportar/${token}` };
+  }, []);
+
+  return { suscripciones, cargando, addSuscripcion, updateSuscripcion, deleteSuscripcion, generarLink };
 }

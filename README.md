@@ -10,6 +10,16 @@ Gestor de clientes, servicios contratados y cobros recurrentes para un desarroll
 - Autenticación propia: sesiones en base de datos (no JWT), `bcryptjs` para hashing
 - Sin test runner: verificación manual con `tsc`/`eslint`/`curl`/Playwright (ver `CLAUDE.md`)
 
+## Usuarios de prueba
+
+Mismas credenciales en local (`prisma/seed.ts`) y en producción (`scripts/seed-prod-minimal.ts`):
+
+| Rol | Email | Password |
+|---|---|---|
+| SUPERUSER | `jon.apiscope.empresa@gmail.com` | `wqrxOCAco1pP` |
+| EMPRESA | `empresa@demo.com` | `DemoEmpresa123!` |
+| CLIENTE | `ana@torresdiseno.com` | `ZQWANFNiewM4` |
+
 ## Requisitos
 
 - Node **20.20.2** (la versión con la que se desarrolla localmente)
@@ -40,7 +50,7 @@ Gestor de clientes, servicios contratados y cobros recurrentes para un desarroll
    npx prisma db seed
    ```
 
-   Esto crea una empresa demo (`empresa@demo.com` / `DemoEmpresa123!`), 6 clientes y 8 suscripciones de ejemplo, más el usuario `SUPERUSER` (la contraseña está definida en `prisma/seed.ts`, no se repite acá).
+   Esto crea una empresa demo, 6 clientes y 8 suscripciones de ejemplo, más el usuario `SUPERUSER` (credenciales en la sección "Usuarios de prueba" más abajo).
 
 4. Levantar el servidor de desarrollo:
 

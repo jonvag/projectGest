@@ -11,6 +11,8 @@ export type Pago = {
   fechaPago: string;
   fechaCobroAnterior: string;
   fechaProximoCobroNueva: string;
+  descripcion: string | null;
+  referencia: string | null;
 };
 
 export type NuevoPago = Omit<Pago, "id">;

@@ -9,16 +9,20 @@ const NAV_ITEMS_BASE = [
   { href: "/dashboard/clientes", label: "Clientes", available: true },
   { href: "/dashboard/suscripciones", label: "Suscripciones", available: true },
   { href: "/dashboard/notificaciones", label: "Notificaciones", available: true },
+  { href: "/dashboard/reportes-pago", label: "Reportes de pago", available: true },
+  { href: "/dashboard/pagos", label: "Historial de pagos", available: true },
 ];
 
 export function Sidebar({ rol }: { rol: Rol }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems =
-    rol === "SUPERUSER"
-      ? [...NAV_ITEMS_BASE, { href: "/dashboard/empresas", label: "Empresas", available: true }]
-      : NAV_ITEMS_BASE;
+  let navItems = NAV_ITEMS_BASE;
+  if (rol === "SUPERUSER") {
+    navItems = [...NAV_ITEMS_BASE, { href: "/dashboard/empresas", label: "Empresas", available: true }];
+  } else if (rol === "EMPRESA") {
+    navItems = [...NAV_ITEMS_BASE, { href: "/dashboard/perfil", label: "Mi perfil", available: true }];
+  }
 
   async function cerrarSesion() {
     await fetch("/api/auth/logout", { method: "POST" });

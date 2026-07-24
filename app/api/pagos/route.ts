@@ -73,6 +73,8 @@ export async function POST(request: Request) {
       fechaPago: parseFechaDb(datos.fechaPago),
       fechaCobroAnterior: parseFechaDb(datos.fechaCobroAnterior),
       fechaProximoCobroNueva: parseFechaDb(datos.fechaProximoCobroNueva),
+      descripcion: datos.descripcion?.trim() || null,
+      referencia: datos.referencia?.trim() || null,
     },
   });
   return NextResponse.json(serializePago(pago), { status: 201 });

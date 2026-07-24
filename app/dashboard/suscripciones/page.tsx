@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ConfirmarPagoModal } from "@/components/dashboard/confirmar-pago-modal";
+import { ConfirmarPagoModal, type DatosConfirmarPago } from "@/components/dashboard/confirmar-pago-modal";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import { SuscripcionFormModal } from "@/components/dashboard/suscripcion-form-modal";
 import { SuscripcionesTable } from "@/components/dashboard/suscripciones-table";
@@ -18,6 +18,7 @@ export default function SuscripcionesPage() {
     addSuscripcion,
     updateSuscripcion,
     deleteSuscripcion,
+    generarLink,
   } = useSuscripciones();
   const { addPago } = usePagos();
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -75,14 +76,14 @@ export default function SuscripcionesPage() {
     setSuscripcionABorrar(null);
   }
 
-  async function confirmarPago(fechaProximoCobro: string): Promise<string | null> {
+  async function confirmarPago(datos: DatosConfirmarPago): Promise<string | null> {
     if (!suscripcionAPagar) return null;
     const resultado = await updateSuscripcion(suscripcionAPagar.id, {
       clienteId: suscripcionAPagar.clienteId,
       servicio: suscripcionAPagar.servicio,
       monto: suscripcionAPagar.monto,
       ciclo: suscripcionAPagar.ciclo,
-      proximoCobro: fechaProximoCobro,
+      proximoCobro: datos.fechaProximoCobro,
     });
     if (!resultado.ok) {
       return resultado.error;
@@ -94,7 +95,9 @@ export default function SuscripcionesPage() {
       monto: suscripcionAPagar.monto,
       fechaPago: toISODate(new Date()),
       fechaCobroAnterior: suscripcionAPagar.proximoCobro,
-      fechaProximoCobroNueva: fechaProximoCobro,
+      fechaProximoCobroNueva: datos.fechaProximoCobro,
+      descripcion: datos.descripcion.trim() || null,
+      referencia: datos.referencia.trim() || null,
     });
     cerrarConfirmarPago();
     return null;
@@ -127,6 +130,7 @@ export default function SuscripcionesPage() {
         onEditar={abrirEditar}
         onBorrar={pedirBorrar}
         onMarcarPagado={abrirConfirmarPago}
+        onCopiarLink={generarLink}
       />
 
       <SuscripcionFormModal

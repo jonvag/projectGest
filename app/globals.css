@@ -12,9 +12,7 @@
   --color-success-bg: #edf3ec;
   --color-success-border: #cfe0cc;
   --color-success-text: #346538;
-  /* Acento nuevo (powder-petal) — definido solo para modo claro por ahora,
-     a pedido explícito. Si se usa en un componente visible en modo oscuro,
-     hay que agregarle su contraparte en el bloque .dark de abajo. */
+  /* Acento (powder-petal), con contraparte en el bloque .dark de abajo. */
   --color-accent-bg: #ffefe5;
   --color-accent-border: #ffbe99;
   --color-accent-text: #993800;
@@ -32,6 +30,9 @@
   --color-success-bg: #1c2a1c;
   --color-success-border: #2f4a2f;
   --color-success-text: #8fc98f;
+  --color-accent-bg: #3a2a1f;
+  --color-accent-border: #5a4030;
+  --color-accent-text: #e0a878;
 }
 
 * {

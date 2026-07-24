@@ -4,12 +4,18 @@ import { useState } from "react";
 import type { Cliente, Suscripcion } from "@/lib/mock-data";
 import { calcularProximaFecha } from "@/lib/suscripciones-store";
 
+export type DatosConfirmarPago = {
+  fechaProximoCobro: string;
+  descripcion: string;
+  referencia: string;
+};
+
 type ConfirmarPagoModalProps = {
   open: boolean;
   suscripcion: Suscripcion | null;
   cliente: Cliente | null;
   onClose: () => void;
-  onConfirmar: (fechaProximoCobro: string) => Promise<string | null>;
+  onConfirmar: (datos: DatosConfirmarPago) => Promise<string | null>;
 };
 
 // El padre le pasa una `key` que cambia cada vez que el modal se abre
@@ -25,6 +31,8 @@ export function ConfirmarPagoModal({
   const [fecha, setFecha] = useState<string>(() =>
     suscripcion ? calcularProximaFecha(suscripcion.proximoCobro, suscripcion.ciclo) : "",
   );
+  const [descripcion, setDescripcion] = useState("");
+  const [referencia, setReferencia] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -36,7 +44,7 @@ export function ConfirmarPagoModal({
       return;
     }
     setGuardando(true);
-    const errorDelServidor = await onConfirmar(fecha);
+    const errorDelServidor = await onConfirmar({ fechaProximoCobro: fecha, descripcion, referencia });
     setGuardando(false);
     if (errorDelServidor) {
       setError(errorDelServidor);
@@ -65,6 +73,34 @@ export function ConfirmarPagoModal({
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
           />
           {error && <p className="text-sm text-[var(--color-danger-text)]">{error}</p>}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-1">
+          <label className="text-sm text-[var(--color-text-muted)]" htmlFor="descripcionPago">
+            Descripción (opcional)
+          </label>
+          <input
+            id="descripcionPago"
+            type="text"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Ej: pagó en efectivo"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          />
+        </div>
+
+        <div className="mt-4 flex flex-col gap-1">
+          <label className="text-sm text-[var(--color-text-muted)]" htmlFor="referenciaPago">
+            Referencia de pago (opcional)
+          </label>
+          <input
+            id="referenciaPago"
+            type="text"
+            value={referencia}
+            onChange={(e) => setReferencia(e.target.value)}
+            placeholder="Nro. de operación, transferencia, etc."
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          />
         </div>
 
         <div className="mt-6 flex justify-end gap-3">

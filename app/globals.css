@@ -53,6 +53,10 @@
   /* Superficie propia de los modales: mas opaca que --color-surface para que
      se lean como paneles solidos y no se mezclen con lo que hay detras. */
   --color-modal-surface: rgba(255, 250, 244, 0.96);
+  /* Chip "hundido" dentro de una card glass (ej. filas Ciclo/Próximo cobro
+     en las cards mobile) — un tinte oscuro sutil, no un color solido, para
+     que siga leyéndose como parte del mismo vidrio. */
+  --color-chip-bg: rgba(0, 0, 0, 0.05);
 }
 
 .dark .dashboard-shell {
@@ -69,6 +73,7 @@
      y el grano, para que combine con el resto del concepto glass en vez
      de leerse como un panel solido desconectado. */
   --color-modal-surface: rgba(42, 32, 48, 0.829);
+  --color-chip-bg: rgba(255, 255, 255, 0.07);
 }
 
 .dashboard-shell::before,
@@ -169,6 +174,70 @@
   filter: brightness(1.15);
 }
 
+/* Tablas responsive: en mobile cada <tr> pasa a ser una card apilada en vez
+   de forzar scroll horizontal. Requiere className="responsive-cards" en el
+   <table> y data-label="..." en cada <td> (el label se inyecta con
+   content: attr()). */
+@media (max-width: 639px) {
+  .dashboard-shell table.responsive-cards,
+  .dashboard-shell table.responsive-cards thead,
+  .dashboard-shell table.responsive-cards tbody,
+  .dashboard-shell table.responsive-cards tr,
+  .dashboard-shell table.responsive-cards td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dashboard-shell table.responsive-cards thead {
+    display: none;
+  }
+
+  .dashboard-shell table.responsive-cards tbody tr {
+    margin-bottom: 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 0.25rem 1rem;
+  }
+
+  .dashboard-shell table.responsive-cards tbody tr:hover {
+    transform: none;
+  }
+
+  .dashboard-shell table.responsive-cards td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0 !important;
+    text-align: right;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+
+  .dashboard-shell table.responsive-cards td:last-child {
+    border-bottom: none !important;
+  }
+
+  .dashboard-shell table.responsive-cards td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    text-align: left;
+    color: var(--color-text-muted);
+  }
+
+  .dashboard-shell table.responsive-cards td:empty,
+  .dashboard-shell table.responsive-cards td[colspan] {
+    display: block;
+    text-align: center;
+  }
+}
+
 /* Landing (/) y login: version mas liviana del mismo lenguaje visual del
    dashboard ("un poco" de los mismos estilos, no el tratamiento completo).
    Blobs mas tenues, sin ruido, y reutiliza el mismo truco de clase literal
@@ -238,6 +307,15 @@
 
 * {
   box-sizing: border-box;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 html,

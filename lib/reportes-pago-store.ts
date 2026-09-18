@@ -7,7 +7,7 @@ export type ReportePago = {
   suscripcionId: string;
   clienteId: string;
   referencia: string | null;
-  comprobanteTipo: string;
+  comprobanteTipo: string | null;
   estado: "pendiente" | "verificado" | "rechazado";
   creadoEn: string;
   revisadoEn: string | null;

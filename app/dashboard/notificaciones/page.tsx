@@ -23,7 +23,7 @@ export default function NotificacionesPage() {
       <h1 className="text-xl font-medium text-[var(--color-text)]">Notificaciones</h1>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="responsive-cards w-full min-w-[640px] text-left text-sm sm:min-w-0">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
               <th className="py-2 pr-4 font-medium">Cliente</th>
@@ -37,10 +37,16 @@ export default function NotificacionesPage() {
           <tbody className="divide-y divide-[var(--color-border)]">
             {notificaciones.map((n) => (
               <tr key={n.id}>
-                <td className="py-3 pr-4 text-[var(--color-text)]">{n.cliente.nombre}</td>
-                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{n.suscripcion.servicio}</td>
-                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{n.canal}</td>
-                <td className="py-3 pr-4">
+                <td data-label="Cliente" className="py-3 pr-4 text-[var(--color-text)]">
+                  {n.cliente.nombre}
+                </td>
+                <td data-label="Servicio" className="py-3 pr-4 text-[var(--color-text-muted)]">
+                  {n.suscripcion.servicio}
+                </td>
+                <td data-label="Canal" className="py-3 pr-4 text-[var(--color-text-muted)]">
+                  {n.canal}
+                </td>
+                <td data-label="Estado" className="py-3 pr-4">
                   <span
                     className={
                       n.estado === "enviado"
@@ -51,8 +57,12 @@ export default function NotificacionesPage() {
                     {n.estado === "enviado" ? "Enviado" : "Falló"}
                   </span>
                 </td>
-                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{formatFecha(n.enviadoEn)}</td>
-                <td className="py-3 pr-4 text-[var(--color-text-muted)]">{n.detalle ?? "—"}</td>
+                <td data-label="Fecha" className="py-3 pr-4 text-[var(--color-text-muted)]">
+                  {formatFecha(n.enviadoEn)}
+                </td>
+                <td data-label="Detalle" className="py-3 pr-4 text-[var(--color-text-muted)]">
+                  {n.detalle ?? "—"}
+                </td>
               </tr>
             ))}
             {notificaciones.length === 0 && (

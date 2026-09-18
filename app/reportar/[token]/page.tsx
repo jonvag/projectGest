@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { AmbientVideoBackground } from "@/components/ambient-video-background";
 
 type InfoSuscripcion = {
   servicio: string;
@@ -30,6 +31,39 @@ function formatFecha(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
+// Achica fotos pesadas (cámara de celular fácil son varios MB) antes de
+// subirlas: redimensiona al ancho máximo y reencodea como JPEG. Si algo
+// falla (navegador sin soporte, etc.) devuelve el archivo original tal
+// cual — el límite de 5MB del servidor sigue como red de seguridad.
+async function comprimirImagen(archivo: File): Promise<File> {
+  const UMBRAL_BYTES = 800 * 1024;
+  if (archivo.size <= UMBRAL_BYTES) return archivo;
+
+  try {
+    const bitmap = await createImageBitmap(archivo);
+    const MAX_DIMENSION = 1600;
+    const escala = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * escala);
+    const height = Math.round(bitmap.height * escala);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return archivo;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.82),
+    );
+    if (!blob || blob.size >= archivo.size) return archivo;
+
+    return new File([blob], archivo.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+  } catch {
+    return archivo;
+  }
+}
+
 export default function ReportarPagoPage() {
   const params = useParams<{ token: string }>();
   const [info, setInfo] = useState<InfoSuscripcion | null>(null);
@@ -38,9 +72,22 @@ export default function ReportarPagoPage() {
 
   const [referencia, setReferencia] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [comprimiendo, setComprimiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+
+  async function handleArchivoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const seleccionado = e.target.files?.[0] ?? null;
+    if (!seleccionado) {
+      setArchivo(null);
+      return;
+    }
+    setComprimiendo(true);
+    const comprimido = await comprimirImagen(seleccionado);
+    setComprimiendo(false);
+    setArchivo(comprimido);
+  }
 
   useEffect(() => {
     fetch(`/api/reportar/${params.token}`)
@@ -57,15 +104,17 @@ export default function ReportarPagoPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!archivo) {
-      setError("Subí una foto o captura del comprobante.");
+    if (!archivo && !referencia.trim()) {
+      setError("Sube una foto del comprobante o indica una referencia — al menos uno de los dos.");
       return;
     }
     setError(null);
     setEnviando(true);
 
     const formData = new FormData();
-    formData.append("comprobante", archivo);
+    if (archivo) {
+      formData.append("comprobante", archivo);
+    }
     if (referencia.trim()) {
       formData.append("referencia", referencia.trim());
     }
@@ -86,7 +135,8 @@ export default function ReportarPagoPage() {
 
   if (cargando) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="public-shell flex min-h-screen items-center justify-center px-4">
+        <AmbientVideoBackground />
         <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
       </div>
     );
@@ -94,7 +144,8 @@ export default function ReportarPagoPage() {
 
   if (linkInvalido || !info) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="public-shell flex min-h-screen items-center justify-center px-4">
+        <AmbientVideoBackground />
         <p className="text-[var(--color-text)]">Este link no es válido.</p>
       </div>
     );
@@ -102,7 +153,8 @@ export default function ReportarPagoPage() {
 
   if (enviado) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="public-shell flex min-h-screen items-center justify-center px-4">
+        <AmbientVideoBackground />
         <div className="w-full max-w-sm rounded-lg border border-[var(--color-success-border)] bg-[var(--color-success-bg)] p-6 text-center">
           <p className="text-[var(--color-success-text)]">
             Reporte enviado. La empresa va a verificarlo y confirmar tu pago.
@@ -113,7 +165,8 @@ export default function ReportarPagoPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="public-shell flex min-h-screen items-center justify-center px-4">
+      <AmbientVideoBackground />
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-sm flex-col gap-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6"
@@ -145,9 +198,13 @@ export default function ReportarPagoPage() {
           </div>
         )}
 
+        <p className="text-xs text-[var(--color-text-muted)]">
+          Completá al menos uno de los dos: la referencia o la foto del comprobante.
+        </p>
+
         <div className="flex flex-col gap-1">
           <label className="text-sm text-[var(--color-text-muted)]" htmlFor="referencia">
-            Referencia (opcional)
+            Referencia
           </label>
           <input
             id="referencia"
@@ -167,16 +224,19 @@ export default function ReportarPagoPage() {
             id="comprobante"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+            onChange={handleArchivoChange}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
           />
+          {comprimiendo && (
+            <p className="text-xs text-[var(--color-text-muted)]">Optimizando la imagen...</p>
+          )}
         </div>
 
         {error && <p className="text-sm text-[var(--color-danger-text)]">{error}</p>}
 
         <button
           type="submit"
-          disabled={enviando}
+          disabled={enviando || comprimiendo}
           className="rounded-md bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--color-bg)] disabled:opacity-50"
         >
           {enviando ? "Enviando..." : "Enviar reporte"}

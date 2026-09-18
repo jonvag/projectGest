@@ -79,7 +79,7 @@ export function serializeReportePago(r: {
   suscripcionId: string;
   clienteId: string;
   referencia: string | null;
-  comprobanteTipo: string;
+  comprobanteTipo: string | null;
   estado: string;
   creadoEn: Date;
   revisadoEn: Date | null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { CheckIcon, Cross2Icon, ImageIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { FotoModal } from "@/components/dashboard/foto-modal";
 import { VerificarPagoModal } from "@/components/dashboard/verificar-pago-modal";
@@ -68,18 +68,27 @@ export default function ReportesPagoPage() {
               className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFotoAmpliada(`/api/reportes-pago/${r.id}/comprobante`)}
-                  aria-label="Ver comprobante ampliado"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/reportes-pago/${r.id}/comprobante`}
-                    alt="Comprobante"
-                    className="h-16 w-16 rounded-md border border-[var(--color-border)] object-cover"
-                  />
-                </button>
+                {r.comprobanteTipo ? (
+                  <button
+                    type="button"
+                    onClick={() => setFotoAmpliada(`/api/reportes-pago/${r.id}/comprobante`)}
+                    aria-label="Ver comprobante ampliado"
+                    title="Ver comprobante"
+                    className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)]"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-chip-bg)" }}
+                  >
+                    <ImageIcon className="h-6 w-6" />
+                  </button>
+                ) : (
+                  <div
+                    aria-label="Reporte sin comprobante"
+                    title="Este reporte se envió sin foto de comprobante"
+                    className="flex h-16 w-16 shrink-0 cursor-not-allowed items-center justify-center rounded-md border border-dashed text-[var(--color-text-muted)] opacity-50"
+                    style={{ borderColor: "var(--color-border)" }}
+                  >
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                )}
                 <div>
                   <p className="text-[var(--color-text)]">
                     {r.clienteNombre} · {r.servicio}

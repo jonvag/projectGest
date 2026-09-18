@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil2Icon, TrashIcon } from "@radix-ui/react-icons";
+import { Pencil2Icon, PersonIcon, TrashIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import type { Cliente } from "@/lib/mock-data";
 
@@ -37,7 +37,8 @@ export function EmpresaClientesTable({
         className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]"
       />
 
-      <div className="overflow-x-auto">
+      {/* Desktop: tabla clásica */}
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
@@ -111,6 +112,91 @@ export function EmpresaClientesTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: card por cliente, misma distribución que las otras tablas. */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        {filtrados.map((c) => (
+          <div
+            key={c.id}
+            className="flex gap-3 rounded-xl border p-4 backdrop-blur-md"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-2 text-[var(--color-text)]">
+                <PersonIcon className="shrink-0 opacity-70" />
+                <h3 className="truncate text-base font-semibold">{c.nombre}</h3>
+              </div>
+              <p className="mb-3 truncate text-sm text-[var(--color-text-muted)]">{c.empresa}</p>
+
+              <div className="mb-3 grid grid-cols-2 gap-1.5">
+                <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "var(--color-chip-bg)" }}>
+                  <div className="text-xs text-[var(--color-text-muted)]">ContactId</div>
+                  <div className="truncate font-medium text-[var(--color-text)]">{c.contactId}</div>
+                </div>
+                <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "var(--color-chip-bg)" }}>
+                  <div className="text-xs text-[var(--color-text-muted)]">Email</div>
+                  <div className="truncate font-medium text-[var(--color-text)]">{c.email}</div>
+                </div>
+              </div>
+
+              {c.userId ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+                    style={{ backgroundColor: "var(--color-success-bg)", color: "var(--color-success-text)" }}
+                  >
+                    Con acceso
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onResetearPassword(c)}
+                    className="rounded-md border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text)]"
+                  >
+                    Resetear contraseña
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onCrearAcceso(c)}
+                  className="rounded-md border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text)]"
+                >
+                  Crear acceso
+                </button>
+              )}
+            </div>
+
+            <div
+              className="flex flex-col items-center justify-center gap-1 border-l pl-3"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <button
+                type="button"
+                onClick={() => onEditar(c)}
+                aria-label={`Editar ${c.nombre}`}
+                title="Editar"
+                className="rounded-md p-1.5 text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface)]"
+              >
+                <Pencil2Icon />
+              </button>
+              <button
+                type="button"
+                onClick={() => onBorrar(c)}
+                aria-label={`Borrar ${c.nombre}`}
+                title="Borrar"
+                className="rounded-md p-1.5 text-[var(--color-danger-text)] transition-colors hover:bg-[var(--color-danger-bg)]"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          </div>
+        ))}
+        {filtrados.length === 0 && (
+          <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+            Esta empresa todavía no tiene clientes.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -12,18 +12,18 @@ export function FotoModal({ src, onClose }: FotoModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
       <div
-        className="relative flex h-[92vh] w-[92vw] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-modal-surface)] p-4"
+        className="relative flex max-h-[90vh] w-full max-w-3xl items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-modal-surface)] p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="absolute -right-3 -top-3 rounded-full bg-[var(--color-text)] p-1.5 text-[var(--color-bg)]"
+          className="absolute right-2 top-2 z-10 rounded-full bg-[var(--color-text)] p-1.5 text-[var(--color-bg)]"
         >
           <Cross2Icon />
         </button>

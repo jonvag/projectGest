@@ -13,7 +13,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const reporte = await prisma.reportePago.findFirst({
     where: { id, cliente: filtroClientePorSesion(sesion) },
   });
-  if (!reporte) {
+  if (!reporte || !reporte.comprobante || !reporte.comprobanteTipo) {
     return NextResponse.json({ error: "No encontrado." }, { status: 404 });
   }
 

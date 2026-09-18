@@ -27,6 +27,8 @@ model Cliente {
   suscripciones  Suscripcion[]
   notificaciones Notificacion[]
   reportesPago   ReportePago[]
+
+  @@index([usuarioId])
 }
 
 model Suscripcion {
@@ -41,6 +43,8 @@ model Suscripcion {
   creadoEn       DateTime       @default(now())
   notificaciones Notificacion[]
   reportesPago   ReportePago[]
+
+  @@index([clienteId])
 }
 
 model ReportePago {
@@ -50,11 +54,14 @@ model ReportePago {
   clienteId       String
   cliente         Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   referencia      String?
-  comprobante     Bytes
-  comprobanteTipo String
+  comprobante     Bytes?
+  comprobanteTipo String?
   estado          String      @default("pendiente")
   creadoEn        DateTime    @default(now())
   revisadoEn      DateTime?
+
+  @@index([clienteId])
+  @@index([suscripcionId])
 }
 
 model Notificacion {
@@ -67,6 +74,9 @@ model Notificacion {
   estado        String
   detalle       String?
   enviadoEn     DateTime    @default(now())
+
+  @@index([clienteId])
+  @@index([suscripcionId])
 }
 
 model Pago {
@@ -81,6 +91,8 @@ model Pago {
   descripcion            String?
   referencia             String?
   creadoEn               DateTime @default(now())
+
+  @@index([clienteId])
 }
 
 enum Rol {

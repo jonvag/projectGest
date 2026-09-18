@@ -11,7 +11,19 @@ export async function GET() {
 
   const reportes = await prisma.reportePago.findMany({
     where: { cliente: filtroClientePorSesion(sesion) },
-    include: {
+    select: {
+      id: true,
+      suscripcionId: true,
+      clienteId: true,
+      referencia: true,
+      comprobanteTipo: true,
+      estado: true,
+      creadoEn: true,
+      revisadoEn: true,
+      // Nunca seleccionar `comprobante` (Bytes) acá: la lista solo necesita
+      // metadata, la imagen se pide aparte y lazy vía /comprobante cuando
+      // el usuario la abre. Antes se traía el binario completo de cada
+      // reporte en cada carga de la lista sin usarlo.
       cliente: { select: { nombre: true } },
       suscripcion: { select: { servicio: true, ciclo: true, proximoCobro: true } },
     },

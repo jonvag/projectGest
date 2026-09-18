@@ -13,7 +13,7 @@ const ETIQUETA_ROL: Record<Rol, string> = {
 
 function SeccionCuenta({ perfil }: { perfil: Perfil }) {
   return (
-    <section className="flex max-w-sm flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+    <section className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
       <h2 className="text-sm font-medium text-[var(--color-text)]">Cuenta</h2>
       <div className="flex flex-col gap-1">
         <span className="text-sm text-[var(--color-text-muted)]">Nombre</span>
@@ -65,7 +65,7 @@ function DatosBancariosForm({ perfil, onGuardar }: DatosBancariosFormProps) {
   }
 
   return (
-    <section className="flex max-w-sm flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+    <section className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
       <div>
         <h2 className="text-sm font-medium text-[var(--color-text)]">Datos de cobro</h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -131,7 +131,7 @@ export default function PerfilPage() {
   const { perfil, cargando, actualizarPerfil, cambiarPassword } = usePerfil();
 
   return (
-    <div className="flex flex-col gap-8 px-6 py-8 sm:px-10">
+    <div className="flex flex-col items-center gap-8 px-6 py-8 sm:px-10">
       <h1 className="text-xl font-medium text-[var(--color-text)]">Mi perfil</h1>
 
       {cargando || !perfil ? (
@@ -140,7 +140,7 @@ export default function PerfilPage() {
         <>
           <SeccionCuenta perfil={perfil} />
 
-          <section className="flex max-w-sm flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+          <section className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
             <h2 className="text-sm font-medium text-[var(--color-text)]">Cambiar contraseña</h2>
             <CambiarPasswordForm onGuardar={cambiarPassword} />
           </section>

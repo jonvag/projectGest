@@ -9,6 +9,7 @@ type EmpresaClientesTableProps = {
   onEditar: (cliente: Cliente) => void;
   onBorrar: (cliente: Cliente) => void;
   onCrearAcceso: (cliente: Cliente) => void;
+  onResetearPassword: (cliente: Cliente) => void;
 };
 
 export function EmpresaClientesTable({
@@ -16,6 +17,7 @@ export function EmpresaClientesTable({
   onEditar,
   onBorrar,
   onCrearAcceso,
+  onResetearPassword,
 }: EmpresaClientesTableProps) {
   const [busqueda, setBusqueda] = useState("");
 
@@ -56,7 +58,16 @@ export function EmpresaClientesTable({
                 <td className="py-3 pr-4 text-[var(--color-text-muted)]">{c.email}</td>
                 <td className="py-3 pr-4">
                   {c.userId ? (
-                    <span className="text-[var(--color-success-text)]">Con acceso</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--color-success-text)]">Con acceso</span>
+                      <button
+                        type="button"
+                        onClick={() => onResetearPassword(c)}
+                        className="rounded-md border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text)]"
+                      >
+                        Resetear contraseña
+                      </button>
+                    </div>
                   ) : (
                     <button
                       type="button"

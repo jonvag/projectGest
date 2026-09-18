@@ -7,14 +7,22 @@ import { ClienteFormModal } from "@/components/dashboard/cliente-form-modal";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import { CrearAccesoModal } from "@/components/dashboard/crear-acceso-modal";
 import { EmpresaClientesTable } from "@/components/dashboard/empresa-clientes-table";
+import { ResetearPasswordModal } from "@/components/dashboard/resetear-password-modal";
 import type { NuevoCliente } from "@/lib/clientes-store";
 import { useEmpresaDetalle } from "@/lib/empresas-store";
 import type { Cliente } from "@/lib/mock-data";
 
 export default function EmpresaDetallePage() {
   const params = useParams<{ id: string }>();
-  const { empresa, cargando, crearCliente, actualizarCliente, borrarCliente, crearAcceso } =
-    useEmpresaDetalle(params.id);
+  const {
+    empresa,
+    cargando,
+    crearCliente,
+    actualizarCliente,
+    borrarCliente,
+    crearAcceso,
+    resetearPassword,
+  } = useEmpresaDetalle(params.id);
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
@@ -22,6 +30,7 @@ export default function EmpresaDetallePage() {
   const [clienteABorrar, setClienteABorrar] = useState<Cliente | null>(null);
   const [borrando, setBorrando] = useState(false);
   const [clienteAcceso, setClienteAcceso] = useState<Cliente | null>(null);
+  const [clienteReset, setClienteReset] = useState<Cliente | null>(null);
 
   function abrirNuevo() {
     setClienteAEditar(null);
@@ -77,6 +86,16 @@ export default function EmpresaDetallePage() {
     return resultado.error;
   }
 
+  async function confirmarReset(password: string): Promise<string | null> {
+    if (!clienteReset) return null;
+    const resultado = await resetearPassword(clienteReset.id, password);
+    if (resultado.ok) {
+      setClienteReset(null);
+      return null;
+    }
+    return resultado.error;
+  }
+
   if (cargando) {
     return (
       <div className="flex flex-col gap-6 px-6 py-8 sm:px-10">
@@ -123,6 +142,7 @@ export default function EmpresaDetallePage() {
         onEditar={abrirEditar}
         onBorrar={pedirBorrar}
         onCrearAcceso={setClienteAcceso}
+        onResetearPassword={setClienteReset}
       />
 
       <ClienteFormModal
@@ -148,6 +168,14 @@ export default function EmpresaDetallePage() {
         nombreCliente={clienteAcceso?.nombre ?? ""}
         onClose={() => setClienteAcceso(null)}
         onCrear={confirmarAcceso}
+      />
+
+      <ResetearPasswordModal
+        key={`reset-${clienteReset?.id ?? "ninguno"}`}
+        open={clienteReset !== null}
+        nombreCliente={clienteReset?.nombre ?? ""}
+        onClose={() => setClienteReset(null)}
+        onResetear={confirmarReset}
       />
     </div>
   );

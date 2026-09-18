@@ -1,5 +1,6 @@
 "use client";
 
+import { HomeIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { useState } from "react";
 import { EmpresaFormModal } from "@/components/dashboard/empresa-form-modal";
@@ -35,7 +36,8 @@ export default function EmpresasPage() {
         </button>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Desktop: tabla clásica */}
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[480px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
@@ -65,6 +67,37 @@ export default function EmpresasPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: card por empresa, misma distribución que clientes/suscripciones. */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        {empresas.map((e) => (
+          <div
+            key={e.id}
+            className="rounded-xl border p-4 backdrop-blur-md"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+          >
+            <div className="mb-3 flex items-center gap-2 text-[var(--color-text)]">
+              <HomeIcon className="shrink-0 opacity-70" />
+              <Link href={`/dashboard/empresas/${e.id}`} className="truncate text-base font-semibold underline">
+                {e.nombre ?? e.email}
+              </Link>
+            </div>
+
+            <div className="mb-3 flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-[var(--color-text)]">{e._count.clientes}</span>
+              <span className="text-sm text-[var(--color-text-muted)]">clientes</span>
+            </div>
+
+            <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "var(--color-chip-bg)" }}>
+              <div className="text-xs text-[var(--color-text-muted)]">Email</div>
+              <div className="truncate font-medium text-[var(--color-text)]">{e.email}</div>
+            </div>
+          </div>
+        ))}
+        {empresas.length === 0 && (
+          <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">No hay empresas todavía.</p>
+        )}
       </div>
 
       <EmpresaFormModal

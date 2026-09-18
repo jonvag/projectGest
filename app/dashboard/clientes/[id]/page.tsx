@@ -63,13 +63,13 @@ export default function ClienteDetallePage() {
         <p className="text-sm text-[var(--color-text-muted)]">{cliente.empresa}</p>
       </div>
 
-      <section className="flex flex-col gap-2">
+      <section className="flex flex-col gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-text)]">Datos de contacto</h2>
         <p className="text-sm text-[var(--color-text-muted)]">ContactId: {cliente.contactId}</p>
         <p className="text-sm text-[var(--color-text-muted)]">Email: {cliente.email}</p>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-text)]">Suscripciones</h2>
         {suscripcionesDelCliente.length === 0 ? (
           <p className="text-sm text-[var(--color-text-muted)]">Sin suscripciones.</p>
@@ -90,7 +90,7 @@ export default function ClienteDetallePage() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-text)]">Historial de pagos</h2>
         <PagosTimeline pagos={pagosDelCliente} />
       </section>

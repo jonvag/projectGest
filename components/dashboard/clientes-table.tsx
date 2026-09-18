@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil2Icon, TrashIcon } from "@radix-ui/react-icons";
+import { Pencil2Icon, PersonIcon, TrashIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { useState } from "react";
 import type { Empresa } from "@/lib/empresas-store";
@@ -43,7 +43,8 @@ export function ClientesTable({ clientes, suscripciones, empresas, onEditar, onB
         className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]"
       />
 
-      <div className="overflow-x-auto">
+      {/* Desktop: tabla clásica */}
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
@@ -106,6 +107,88 @@ export function ClientesTable({ clientes, suscripciones, empresas, onEditar, onB
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: card por cliente, misma distribución que suscripciones
+          (nombre como título, dato numérico grande, empresa como badge,
+          contactId/email como chips, acciones al costado). */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        {filtrados.map((c) => (
+          <div
+            key={c.id}
+            className="flex gap-3 rounded-xl border p-4 backdrop-blur-md"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="mb-3 flex items-center gap-2 text-[var(--color-text)]">
+                <PersonIcon className="shrink-0 opacity-70" />
+                <Link href={`/dashboard/clientes/${c.id}`} className="truncate text-base font-semibold underline">
+                  {c.nombre}
+                </Link>
+              </div>
+
+              <div className="mb-3 flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold text-[var(--color-text)]">{contarSuscripciones(c.id)}</span>
+                <span className="text-sm text-[var(--color-text-muted)]">suscripciones</span>
+              </div>
+
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <span
+                  className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+                  style={{ backgroundColor: "var(--color-accent-bg)", color: "var(--color-accent-text)" }}
+                >
+                  {c.empresa}
+                </span>
+                {empresas && (
+                  <span
+                    className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+                    style={{ backgroundColor: "var(--color-chip-bg)", color: "var(--color-text-muted)" }}
+                  >
+                    {nombreEmpresaDueña(c.usuarioId)}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "var(--color-chip-bg)" }}>
+                  <div className="text-xs text-[var(--color-text-muted)]">ContactId</div>
+                  <div className="truncate font-medium text-[var(--color-text)]">{c.contactId}</div>
+                </div>
+                <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "var(--color-chip-bg)" }}>
+                  <div className="text-xs text-[var(--color-text-muted)]">Email</div>
+                  <div className="truncate font-medium text-[var(--color-text)]">{c.email}</div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="flex flex-col items-center justify-center gap-1 border-l pl-3"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <button
+                type="button"
+                onClick={() => onEditar(c)}
+                aria-label={`Editar ${c.nombre}`}
+                title="Editar"
+                className="rounded-md p-1.5 text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface)]"
+              >
+                <Pencil2Icon />
+              </button>
+              <button
+                type="button"
+                onClick={() => onBorrar(c)}
+                aria-label={`Borrar ${c.nombre}`}
+                title="Borrar"
+                className="rounded-md p-1.5 text-[var(--color-danger-text)] transition-colors hover:bg-[var(--color-danger-bg)]"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          </div>
+        ))}
+        {filtrados.length === 0 && (
+          <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">No se encontraron clientes.</p>
+        )}
       </div>
     </div>
   );

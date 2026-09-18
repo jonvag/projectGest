@@ -31,7 +31,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const reporte = await prisma.reportePago.update({
       where: { id },
       data: { estado: "rechazado", revisadoEn: new Date() },
-      include: {
+      select: {
+        id: true,
+        suscripcionId: true,
+        clienteId: true,
+        referencia: true,
+        comprobanteTipo: true,
+        estado: true,
+        creadoEn: true,
+        revisadoEn: true,
         cliente: { select: { nombre: true } },
         suscripcion: { select: { servicio: true, ciclo: true, proximoCobro: true } },
       },
@@ -70,7 +78,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     prisma.reportePago.update({
       where: { id },
       data: { estado: "verificado", revisadoEn: new Date() },
-      include: {
+      select: {
+        id: true,
+        suscripcionId: true,
+        clienteId: true,
+        referencia: true,
+        comprobanteTipo: true,
+        estado: true,
+        creadoEn: true,
+        revisadoEn: true,
         cliente: { select: { nombre: true } },
         suscripcion: { select: { servicio: true, ciclo: true, proximoCobro: true } },
       },

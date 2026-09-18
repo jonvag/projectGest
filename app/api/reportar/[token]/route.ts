@@ -48,28 +48,36 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const referencia = formData.get("referencia");
   const archivo = formData.get("comprobante");
 
-  if (!(archivo instanceof File)) {
-    return NextResponse.json({ error: "Falta subir el comprobante." }, { status: 400 });
-  }
-  if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
+  const referenciaTexto = typeof referencia === "string" ? referencia.trim() : "";
+  const hayArchivo = archivo instanceof File && archivo.size > 0;
+
+  if (!hayArchivo && !referenciaTexto) {
     return NextResponse.json(
-      { error: "El comprobante debe ser una imagen (JPEG, PNG o WebP)." },
+      { error: "Sube una foto del comprobante o indica una referencia." },
       { status: 400 },
     );
   }
-  if (archivo.size > MAX_BYTES) {
-    return NextResponse.json({ error: "El comprobante no puede pesar más de 5MB." }, { status: 400 });
-  }
 
-  const bytes = Buffer.from(await archivo.arrayBuffer());
+  if (hayArchivo && archivo instanceof File) {
+    if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
+      return NextResponse.json(
+        { error: "El comprobante debe ser una imagen (JPEG, PNG o WebP)." },
+        { status: 400 },
+      );
+    }
+    if (archivo.size > MAX_BYTES) {
+      return NextResponse.json({ error: "El comprobante no puede pesar más de 5MB." }, { status: 400 });
+    }
+  }
 
   await prisma.reportePago.create({
     data: {
       suscripcionId: suscripcion.id,
       clienteId: suscripcion.clienteId,
-      referencia: typeof referencia === "string" && referencia.trim() ? referencia.trim() : null,
-      comprobante: bytes,
-      comprobanteTipo: archivo.type,
+      referencia: referenciaTexto || null,
+      ...(hayArchivo && archivo instanceof File
+        ? { comprobante: Buffer.from(await archivo.arrayBuffer()), comprobanteTipo: archivo.type }
+        : {}),
     },
   });
 

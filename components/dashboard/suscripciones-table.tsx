@@ -86,22 +86,34 @@ export function SuscripcionesTable({
           <tbody className="divide-y divide-[var(--color-border)]">
             {filtradas.map((s) => {
               const vencida = s.proximoCobro < hoyISO;
+              const celdaVencida = vencida ? { backgroundColor: "var(--color-danger-bg)" } : undefined;
               return (
-                <tr
-                  key={s.id}
-                  style={vencida ? { backgroundColor: "var(--color-danger-bg)" } : undefined}
-                >
-                  <td className="py-3 pr-4 text-[var(--color-text)]">{nombreClienteDe(s.clienteId)}</td>
-                  <td className="py-3 pr-4 text-[var(--color-text-muted)]">{s.servicio}</td>
-                  <td className="py-3 pr-4 text-[var(--color-text)]">{formatMonto(s.monto)}</td>
-                  <td className="py-3 pr-4 text-[var(--color-text-muted)]">{ETIQUETA_CICLO[s.ciclo]}</td>
+                <tr key={s.id}>
+                  <td
+                    className="rounded-l-lg py-3 pr-4 text-[var(--color-text)]"
+                    style={celdaVencida}
+                  >
+                    {nombreClienteDe(s.clienteId)}
+                  </td>
+                  <td className="py-3 pr-4 text-[var(--color-text-muted)]" style={celdaVencida}>
+                    {s.servicio}
+                  </td>
+                  <td className="py-3 pr-4 text-[var(--color-text)]" style={celdaVencida}>
+                    {formatMonto(s.monto)}
+                  </td>
+                  <td className="py-3 pr-4 text-[var(--color-text-muted)]" style={celdaVencida}>
+                    {ETIQUETA_CICLO[s.ciclo]}
+                  </td>
                   <td
                     className="py-3 pr-4"
-                    style={{ color: vencida ? "var(--color-danger-text)" : "var(--color-text-muted)" }}
+                    style={{
+                      ...celdaVencida,
+                      color: vencida ? "var(--color-danger-text)" : "var(--color-text-muted)",
+                    }}
                   >
                     {formatFecha(s.proximoCobro)}
                   </td>
-                  <td className="py-3 pr-4">
+                  <td className="rounded-r-lg py-3 pr-4" style={celdaVencida}>
                     <div className="flex gap-2">
                       <button
                         type="button"

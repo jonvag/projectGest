@@ -7,13 +7,10 @@ export async function GET() {
   if (!sesion) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
-  if (sesion.rol !== "EMPRESA") {
-    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
-  }
 
   const user = await prisma.user.findUnique({
     where: { id: sesion.id },
-    select: { nombre: true, email: true, banco: true, numeroCuenta: true, rif: true },
+    select: { nombre: true, email: true, rol: true, banco: true, numeroCuenta: true, rif: true },
   });
   return NextResponse.json(user);
 }

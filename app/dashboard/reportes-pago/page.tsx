@@ -2,6 +2,7 @@
 
 import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { useState } from "react";
+import { FotoModal } from "@/components/dashboard/foto-modal";
 import { VerificarPagoModal } from "@/components/dashboard/verificar-pago-modal";
 import { useReportesPago, type ReportePago } from "@/lib/reportes-pago-store";
 import { useSesion } from "@/lib/sesion-store";
@@ -24,6 +25,7 @@ export default function ReportesPagoPage() {
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [reporteAVerificar, setReporteAVerificar] = useState<ReportePago | null>(null);
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   function abrirVerificar(reporte: ReportePago) {
     setReporteAVerificar(reporte);
@@ -66,14 +68,18 @@ export default function ReportesPagoPage() {
               className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex items-center gap-3">
-                <a href={`/api/reportes-pago/${r.id}/comprobante`} target="_blank" rel="noreferrer">
+                <button
+                  type="button"
+                  onClick={() => setFotoAmpliada(`/api/reportes-pago/${r.id}/comprobante`)}
+                  aria-label="Ver comprobante ampliado"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/reportes-pago/${r.id}/comprobante`}
                     alt="Comprobante"
                     className="h-16 w-16 rounded-md border border-[var(--color-border)] object-cover"
                   />
-                </a>
+                </button>
                 <div>
                   <p className="text-[var(--color-text)]">
                     {r.clienteNombre} · {r.servicio}
@@ -129,6 +135,8 @@ export default function ReportesPagoPage() {
         onClose={cerrarModal}
         onConfirmar={confirmarVerificacion}
       />
+
+      <FotoModal src={fotoAmpliada} onClose={() => setFotoAmpliada(null)} />
     </div>
   );
 }

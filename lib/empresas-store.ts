@@ -139,5 +139,28 @@ export function useEmpresaDetalle(id: string) {
     [recargar],
   );
 
-  return { empresa, cargando, crearCliente, actualizarCliente, borrarCliente, crearAcceso };
+  const resetearPassword = useCallback(
+    async (clienteId: string, password: string): Promise<ResultadoGuardado> => {
+      const response = await fetch(`/api/clientes/${clienteId}/acceso`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!response.ok) {
+        return { ok: false, error: await leerError(response, "No se pudo resetear la contraseña.") };
+      }
+      return { ok: true };
+    },
+    [],
+  );
+
+  return {
+    empresa,
+    cargando,
+    crearCliente,
+    actualizarCliente,
+    borrarCliente,
+    crearAcceso,
+    resetearPassword,
+  };
 }

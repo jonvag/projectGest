@@ -26,7 +26,7 @@ export async function cerrarSesion(token: string): Promise<void> {
   await prisma.session.deleteMany({ where: { id: token } });
 }
 
-export type SesionActual = { id: string; email: string; rol: Rol };
+export type SesionActual = { id: string; email: string; nombre: string | null; rol: Rol };
 
 export async function requireSesion(): Promise<SesionActual | null> {
   const cookieStore = await cookies();
@@ -39,7 +39,12 @@ export async function requireSesion(): Promise<SesionActual | null> {
   });
   if (!session || session.expiraEn < new Date()) return null;
 
-  return { id: session.user.id, email: session.user.email, rol: session.user.rol };
+  return {
+    id: session.user.id,
+    email: session.user.email,
+    nombre: session.user.nombre,
+    rol: session.user.rol,
+  };
 }
 
 export function filtroClientePorSesion(sesion: SesionActual): Prisma.ClienteWhereInput {

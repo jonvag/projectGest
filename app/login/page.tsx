@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
+import { AmbientVideoBackground } from "@/components/ambient-video-background";
 import { Nav } from "@/components/nav";
 
 export default function LoginPage() {
@@ -48,7 +49,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="public-shell flex min-h-screen flex-col">
+      <AmbientVideoBackground />
       <Nav />
       <div className="flex flex-1 items-center justify-center px-4" style={{ perspective: 1000 }}>
         <motion.form

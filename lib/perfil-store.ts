@@ -1,16 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { Rol } from "@prisma/client";
 
 export type Perfil = {
   nombre: string | null;
   email: string;
+  rol: Rol;
   banco: string | null;
   numeroCuenta: string | null;
   rif: string | null;
 };
 
 export type DatosPerfil = { banco: string; numeroCuenta: string; rif: string };
+export type DatosPassword = { passwordActual: string; passwordNueva: string };
 
 type ResultadoGuardado = { ok: true } | { ok: false; error: string };
 
@@ -48,5 +51,17 @@ export function usePerfil() {
     return { ok: true };
   }, []);
 
-  return { perfil, cargando, actualizarPerfil };
+  const cambiarPassword = useCallback(async (datos: DatosPassword): Promise<ResultadoGuardado> => {
+    const response = await fetch("/api/perfil/password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    });
+    if (!response.ok) {
+      return { ok: false, error: await leerError(response, "No se pudo cambiar la contraseña.") };
+    }
+    return { ok: true };
+  }, []);
+
+  return { perfil, cargando, actualizarPerfil, cambiarPassword };
 }

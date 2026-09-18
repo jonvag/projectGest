@@ -35,6 +35,207 @@
   --color-accent-text: #e0a878;
 }
 
+/* Redisenio del dashboard: fondo con "blobs" de gradient + cards en vidrio
+   esmerilado. Escopado a .dashboard-shell para no tocar login/landing, que
+   se quedan con la paleta plana original. */
+.dashboard-shell {
+  position: relative;
+  isolation: isolate;
+  --color-surface: rgba(255, 255, 255, 0.55);
+  --color-border: rgba(255, 255, 255, 0.75);
+  --color-danger-bg: rgba(255, 130, 110, 0.16);
+  --color-danger-border: rgba(255, 130, 110, 0.4);
+  --color-success-bg: rgba(120, 200, 140, 0.16);
+  --color-success-border: rgba(120, 200, 140, 0.4);
+  --color-accent-bg: rgba(255, 180, 120, 0.2);
+  --color-accent-border: rgba(255, 180, 120, 0.45);
+  --gradient-accent: linear-gradient(135deg, #ff9d6e, #c9a6ff);
+  /* Superficie propia de los modales: mas opaca que --color-surface para que
+     se lean como paneles solidos y no se mezclen con lo que hay detras. */
+  --color-modal-surface: rgba(255, 250, 244, 0.96);
+}
+
+.dark .dashboard-shell {
+  --color-surface: rgba(255, 255, 255, 0.05);
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-danger-bg: rgba(255, 120, 100, 0.14);
+  --color-danger-border: rgba(255, 120, 100, 0.32);
+  --color-success-bg: rgba(120, 220, 150, 0.12);
+  --color-success-border: rgba(120, 220, 150, 0.28);
+  --color-accent-bg: rgba(200, 150, 100, 0.16);
+  --color-accent-border: rgba(200, 150, 100, 0.36);
+  --gradient-accent: linear-gradient(135deg, #c9855c, #8a5fc9);
+  /* Menos opaco y con el mismo tinte violeta/calido que los blobs de fondo
+     y el grano, para que combine con el resto del concepto glass en vez
+     de leerse como un panel solido desconectado. */
+  --color-modal-surface: rgba(42, 32, 48, 0.829);
+}
+
+.dashboard-shell::before,
+.dashboard-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Blobs animados: el pseudo-elemento se hace 16% mas grande que el viewport
+   (inset negativo) para que el drift por transform nunca deje ver un borde.
+   Solo transform + opacity -> compositor de GPU, sin costo de red ni CPU
+   apreciable (a diferencia de un video de fondo). */
+@keyframes fondo-drift {
+  0% { transform: translate(0%, 0%) scale(1); }
+  33% { transform: translate(3%, -2.5%) scale(1.04); }
+  66% { transform: translate(-2.5%, 3%) scale(1.02); }
+  100% { transform: translate(0%, 0%) scale(1); }
+}
+
+.dashboard-shell::before {
+  inset: -8%;
+  background:
+    radial-gradient(circle at 15% 10%, #ffdfc2 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, #d9c2ff 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, #c2f0d9 0%, transparent 40%);
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-shell::before,
+  .public-shell::before {
+    animation: fondo-drift 28s ease-in-out infinite;
+    will-change: transform;
+  }
+}
+
+.dark .dashboard-shell::before {
+  background:
+    radial-gradient(circle at 15% 10%, #4a2f5c 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, #2f3f5c 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, #2f5c4a 0%, transparent 40%);
+  opacity: 0.5;
+}
+
+.dashboard-shell::after {
+  background-image: url("/noise.png");
+  background-size: 320px 320px;
+  mix-blend-mode: soft-light;
+  opacity: 0.23;
+}
+
+/* El sidebar y las cards del dashboard usan siempre la clase literal
+   bg-[var(--color-surface)] (ver metric-card, tablas, modales, sidebar).
+   Engancharse a ese nombre generado por Tailwind evita repetir
+   "backdrop-blur" en ~15 archivos idénticos. */
+.dashboard-shell .bg-\[var\(--color-surface\)\] {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Mismo truco para los botones primarios / item de nav activo, que
+   comparten la clase literal bg-[var(--color-text)] en todo el dashboard. */
+.dashboard-shell .bg-\[var\(--color-text\)\] {
+  background: var(--gradient-accent);
+  color: #fff;
+}
+
+/* Panel solido para modales (ver nota de --color-modal-surface arriba). */
+.dashboard-shell .bg-\[var\(--color-modal-surface\)\] {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Hover con leve "zoom" + sombra en filas de tabla, y aire a la izquierda
+   del contenido de la primera columna, en todas las tablas del dashboard. */
+.dashboard-shell table thead tr>th:first-child,
+.dashboard-shell table tbody tr>td:first-child {
+  padding-left: 0.75rem;
+}
+
+.dashboard-shell table tbody tr {
+  position: relative;
+  transition: box-shadow 150ms ease, filter 150ms ease;
+}
+
+.dashboard-shell table tbody tr:hover {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 157, 110, 0.55),
+    0 8px 20px -8px rgba(0, 0, 0, 0.28);
+  filter: brightness(1.04);
+  z-index: 1;
+}
+
+.dark .dashboard-shell table tbody tr:hover {
+  filter: brightness(1.15);
+}
+
+/* Landing (/) y login: version mas liviana del mismo lenguaje visual del
+   dashboard ("un poco" de los mismos estilos, no el tratamiento completo).
+   Blobs mas tenues, sin ruido, y reutiliza el mismo truco de clase literal
+   para el card de login y el boton "Iniciar sesion". */
+.public-shell {
+  position: relative;
+  isolation: isolate;
+  --color-surface: rgba(255, 255, 255, 0.65);
+  --color-border: rgba(255, 255, 255, 0.8);
+  --gradient-accent: linear-gradient(135deg, #ff9d6e, #c9a6ff);
+}
+
+.dark .public-shell {
+  --color-surface: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --gradient-accent: linear-gradient(135deg, #c9855c, #8a5fc9);
+}
+
+.public-shell::before {
+  content: "";
+  position: fixed;
+  inset: -8%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 10%, #ffdfc2 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, #d9c2ff 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, #c2f0d9 0%, transparent 40%);
+  opacity: 0.35;
+}
+
+.dark .public-shell::before {
+  background:
+    radial-gradient(circle at 15% 10%, #4a2f5c 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, #2f3f5c 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, #2f5c4a 0%, transparent 40%);
+  opacity: 0.28;
+}
+
+.public-shell .bg-\[var\(--color-surface\)\] {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.public-shell .bg-\[var\(--color-text\)\] {
+  background: var(--gradient-accent);
+  color: #fff;
+}
+
+/* Scrim entre el video ambiental (z-index -20, ver AmbientVideoBackground)
+   y los blobs/contenido: mantiene el texto legible sin tapar el video. */
+.public-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: var(--color-bg);
+  opacity: 0.55;
+}
+
+.dark .public-shell::after {
+  /* El video es intrínsecamente claro/pastel; en oscuro necesita mucho mas
+     scrim que en claro para no verse lavado sobre la UI oscura. */
+  opacity: 0.86;
+}
+
 * {
   box-sizing: border-box;
 }

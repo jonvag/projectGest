@@ -50,3 +50,38 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     throw error;
   }
 }
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const sesion = await requireSesion();
+  if (!sesion) {
+    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  }
+  if (sesion.rol !== "SUPERUSER") {
+    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const datos = await request.json();
+  if (!datos.password) {
+    return NextResponse.json({ error: "Falta la contraseña nueva." }, { status: 400 });
+  }
+  if (datos.password.length < 8) {
+    return NextResponse.json(
+      { error: "La contraseña debe tener al menos 8 caracteres." },
+      { status: 400 },
+    );
+  }
+
+  const cliente = await prisma.cliente.findUnique({ where: { id } });
+  if (!cliente) {
+    return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 });
+  }
+  if (!cliente.userId) {
+    return NextResponse.json({ error: "Este cliente todavía no tiene acceso creado." }, { status: 400 });
+  }
+
+  const passwordHash = await hashPassword(datos.password);
+  await prisma.user.update({ where: { id: cliente.userId }, data: { passwordHash } });
+
+  return NextResponse.json({ ok: true });
+}

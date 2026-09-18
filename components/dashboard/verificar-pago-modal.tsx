@@ -38,7 +38,7 @@ export function VerificarPagoModal({ open, reporte, onClose, onConfirmar }: Veri
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+      <div className="w-full max-w-md rounded-lg border border-[var(--color-border)] bg-[var(--color-modal-surface)] p-6">
         <h2 className="mb-2 text-lg font-medium text-[var(--color-text)]">
           Verificar pago de {reporte.servicio}
         </h2>
